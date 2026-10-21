@@ -1,0 +1,4 @@
+  <Components Description="__YEAR__ parts">
+    <RuntimeRequirements OS="Win64" Platform="Revit" SeriesMin="R__YEAR__" SeriesMax="R__YEAR__" />
+    <ComponentEntry AppName="External Access Links Manager" Version="__VERSION__" ModuleName="./Contents/R__YEAR__/MRD-Tools.addin" AppDescription="External Access Links Manager" />
+  </Components>

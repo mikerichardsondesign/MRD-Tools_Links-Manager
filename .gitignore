@@ -2,6 +2,9 @@
 bin/
 obj/
 
+# Machine-specific deploy settings (see MRD-Tools\Deploy.targets)
+Deploy.local.props
+
 # Visual Studio
 .vs/
 *.user

@@ -1,0 +1,44 @@
+# Builds the per-user setup and attaches it, with the bundle zip, to a GitHub release.
+#
+# Runs when a version tag is pushed, e.g.  git tag v10.0.0  then  git push origin v10.0.0
+# The tag must match <Version> in MRD-Tools/MRDTools.csproj.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Check the tag matches the csproj version
+        shell: pwsh
+        run: |
+          $version = ([xml](Get-Content MRD-Tools/MRDTools.csproj)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+          if ("v$version" -ne '${{ github.ref_name }}') { throw "Tag ${{ github.ref_name }} doesn't match <Version>$version</Version> in the csproj" }
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup --no-progress -y }
+
+      - name: Build, stage and package
+        working-directory: MRD-Tools
+        run: dotnet build MRDTools.csproj -t:Deploy -p:Flavour=Public "-p:StageRoot=${{ github.workspace }}\deploy"
+
+      - name: Publish the release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            deploy/Public/*.exe
+            deploy/Public/*.zip

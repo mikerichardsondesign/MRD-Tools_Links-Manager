@@ -1,37 +1,56 @@
 <Project>
 
   <!--
-    Assembles the App Store style bundle for every supported Revit year into a staging folder laid out exactly like
-    an ApplicationPlugins folder, ready to copy across by hand:
+    Stages the add-in for every supported Revit year and builds its per-user setup:
 
       dotnet build MRDTools.csproj -t:Deploy
 
-      C:\Temp\LinksManager-Deploy\
-        External Access Links Manager.bundle\       folder to copy into ApplicationPlugins
-        External Access Links Manager.bundle.zip    the same bundle zipped, for the App Store
+    Everything lands in C:\Temp\LinksManager-Deploy\Public\, laid out like the folder it installs into, plus the
+    setup exe and the bundle zipped for a GitHub release. It never writes to a live add-in folder, and the
+    flavour's folder is emptied first.
 
-    It never writes to a live add-in folder, so it needs no administrator rights and can't fail because Revit holds
-    a lock. It is NOT wired into Build. Builds all four years in Release, whatever -c says.
+      C:\Temp\LinksManager-Deploy\Public\
+        ApplicationPlugins\External Access Links Manager.bundle\    copies into %APPDATA%\Autodesk\ApplicationPlugins
+        External Access Links Manager.bundle.zip
+        LinksManager-<version>-Setup.exe
 
-      Stage elsewhere:          -p:StageRoot=D:\somewhere   (a folder of its own: it is emptied first)
-      Stage Debug builds:       -p:BundleConfiguration=Debug
-      Write straight to a live folder (close Revit first; no zip, nothing deleted):
-        -p:DeployRoot="C:\Users\<you>\AppData\Roaming\Autodesk\ApplicationPlugins"
+      Stage elsewhere:      -p:StageRoot=D:\somewhere   (each flavour's subfolder is emptied first)
+      Stage Debug builds:   -p:BundleConfiguration=Debug
+      Skip the setup:       -p:BuildInstaller=false
+
+    Other flavours: point ExtraDeployTargets, in Deploy.local.props beside this file (not committed), at a targets
+    file of your own. For its -p:Flavour=<name> it adds BundleRevitYear items (each with the Location folder its
+    bundle is staged under) and sets SetupName and InstallerScript, plus InnoExtraArguments if it needs them.
+
+    Nothing here uses Exec, which runs through cmd.exe and so fails where that is locked down: the years build
+    through the MSBuild task, and the Inno Setup compiler runs through RunTool below.
   -->
+
+  <Import Project="Deploy.local.props" Condition="Exists('$(MSBuildThisFileDirectory)Deploy.local.props')" />
 
   <PropertyGroup>
     <RepoRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\'))</RepoRoot>
     <BundleName>External Access Links Manager.bundle</BundleName>
+    <Flavour Condition="'$(Flavour)' == ''">Public</Flavour>
     <BundleConfiguration Condition="'$(BundleConfiguration)' == ''">Release</BundleConfiguration>
     <StageRoot Condition="'$(StageRoot)' == ''">C:\Temp\LinksManager-Deploy</StageRoot>
-    <DeployRoot Condition="'$(DeployRoot)' == ''">$(StageRoot)</DeployRoot>
-    <BundleDir>$(DeployRoot)\$(BundleName)\</BundleDir>
-    <PerUserPluginsDir>$(APPDATA)\Autodesk\ApplicationPlugins</PerUserPluginsDir>
+    <FlavourStage>$(StageRoot)\$(Flavour)</FlavourStage>
+    <BuildInstaller Condition="'$(BuildInstaller)' == ''">true</BuildInstaller>
+    <SetupName Condition="'$(Flavour)' == 'Public'">LinksManager-$(Version)-Setup</SetupName>
+    <InstallerScript Condition="'$(Flavour)' == 'Public'">$(RepoRoot)installer\LinksManager.iss</InstallerScript>
+    <InnoCompiler Condition="'$(InnoCompiler)' == '' And Exists('$(LOCALAPPDATA)\Programs\Inno Setup 6\ISCC.exe')">$(LOCALAPPDATA)\Programs\Inno Setup 6\ISCC.exe</InnoCompiler>
+    <InnoCompiler Condition="'$(InnoCompiler)' == '' And Exists('$(MSBuildProgramFiles32)\Inno Setup 6\ISCC.exe')">$(MSBuildProgramFiles32)\Inno Setup 6\ISCC.exe</InnoCompiler>
   </PropertyGroup>
 
-  <ItemGroup>
-    <BundleRevitYear Include="24;25;26;27" />
+  <!-- The years in each flavour, and the folder each one's bundle is staged under -->
+  <ItemGroup Condition="'$(Flavour)' == 'Public'">
+    <BundleRevitYear Include="2024" Short="24" Location="ApplicationPlugins" />
+    <BundleRevitYear Include="2025" Short="25" Location="ApplicationPlugins" />
+    <BundleRevitYear Include="2026" Short="26" Location="ApplicationPlugins" />
+    <BundleRevitYear Include="2027" Short="27" Location="ApplicationPlugins" />
+  </ItemGroup>
 
+  <ItemGroup>
     <!-- Everything that ships next to the add-in DLL. Anything else in bin stays out of the bundle. -->
     <BundleShipFile Include="MRD-Tools.dll;MRD-Tools.pdb;MRD-Tools.addin;EPPlus.dll;MRD-Links-16x16.png;MRD-Links-32x32.png" />
 
@@ -40,61 +59,129 @@
                     Include="Microsoft.Extensions.Configuration.dll;Microsoft.Extensions.Configuration.Abstractions.dll;Microsoft.Extensions.Configuration.FileExtensions.dll;Microsoft.Extensions.Configuration.Json.dll;Microsoft.Extensions.FileProviders.Abstractions.dll;Microsoft.Extensions.FileProviders.Physical.dll;Microsoft.Extensions.FileSystemGlobbing.dll;Microsoft.Extensions.Primitives.dll" />
   </ItemGroup>
 
-  <!-- Runs after each year's build when Deploy asks for it (StageBundle=true) -->
-  <Target Name="StageBundleYear" AfterTargets="Build" Condition="'$(StageBundle)' == 'true'">
+  <!-- Runs a program directly and logs its output: what Exec would do, without going through cmd.exe -->
+  <UsingTask TaskName="RunTool" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <FileName ParameterType="System.String" Required="true" />
+      <Arguments ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System.Diagnostics" />
+      <Using Namespace="System.IO" />
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        Log.LogMessage(MessageImportance.Low, "{0} {1}", FileName, Arguments);
+        var startInfo = new ProcessStartInfo(FileName, Arguments)
+        {
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true,
+        };
+        using (var process = Process.Start(startInfo))
+        {
+            var stderr = process.StandardError.ReadToEndAsync();
+            string stdout = process.StandardOutput.ReadToEnd();
+            process.WaitForExit();
+            bool failed = process.ExitCode != 0;
+            foreach (string line in (stdout + "\n" + stderr.Result).Split('\n'))
+            {
+                if (line.Trim().Length == 0) continue;
+                if (failed) Log.LogError("{0}", line.TrimEnd());
+                else Log.LogMessage(MessageImportance.Normal, "{0}", line.TrimEnd());
+            }
+            if (failed)
+                Log.LogError("{0} exited with code {1}", Path.GetFileName(FileName), process.ExitCode);
+        }
+      ]]></Code>
+    </Task>
+  </UsingTask>
+
+  <!-- Runs after each year's build when Deploy asks for it, copying that year's files into its bundle -->
+  <Target Name="StageBundleYear" AfterTargets="Build" Condition="'$(BundleYearDir)' != ''">
     <ItemGroup>
       <_BundleYearFile Include="@(BundleShipFile->'$(TargetDir)%(Identity)')" />
     </ItemGroup>
     <Error Condition="!Exists('%(_BundleYearFile.FullPath)')" Text="Deploy: %(_BundleYearFile.Filename)%(_BundleYearFile.Extension) is missing from $(TargetDir)" />
-    <Copy SourceFiles="@(_BundleYearFile)" DestinationFolder="$(BundleDir)Contents\R$(RevitVersion)\" />
+    <Copy SourceFiles="@(_BundleYearFile)" DestinationFolder="$(BundleYearDir)" />
   </Target>
 
-  <Target Name="Deploy">
-    <!-- Clear staging so it is an exact picture of what to copy. Guarded so it can only ever empty the staging
-         folder, never a live add-in folder reached through -p:DeployRoot. -->
-    <RemoveDir Directories="$(DeployRoot)" Condition="'$(DeployRoot)' == '$(StageRoot)'" />
+  <Target Name="Deploy" DependsOnTargets="_DeployCheck;_DeployBuildYears;_DeployBundles;_DeployZip;_DeployInstaller">
+    <Message Importance="high" Text="  " />
+    <Message Importance="high" Text="Staged at: $(FlavourStage)" />
+    <Message Importance="high" Condition="'$(Flavour)' == 'Public' And '$(BuildInstaller)' == 'true'" Text="  Setup, per user:      $(SetupName).exe" />
+    <Message Importance="high" Condition="'$(Flavour)' == 'Public'" Text="  GitHub release:       the setup + $(BundleName).zip" />
+    <Message Importance="high" Condition="'$(Flavour)' == 'Public'" Text="  Manual copy instead:  ApplicationPlugins\$(BundleName)\  into  %25APPDATA%25\Autodesk\ApplicationPlugins" />
+  </Target>
 
-    <Message Importance="high" Text="Staging External Access Links Manager $(Version) ($(BundleConfiguration)) for Revit 2024-2027" />
+  <Target Name="_DeployCheck">
+    <Error Condition="'$(ExtraDeployTargets)' != '' And !Exists('$(ExtraDeployTargets)')" Text="ExtraDeployTargets points at a file that doesn't exist: $(ExtraDeployTargets)" />
+    <Error Condition="'@(BundleRevitYear)' == ''" Text="Unknown flavour '$(Flavour)'. Public is built in; others come from the targets file named by ExtraDeployTargets." />
+    <Error Condition="'$(BuildInstaller)' == 'true' And '$(InstallerScript)' == ''" Text="Flavour '$(Flavour)' has no InstallerScript. Set one, or skip the setup with -p:BuildInstaller=false." />
+    <Error Condition="'$(BuildInstaller)' == 'true' And !Exists('$(InnoCompiler)')" Text="Inno Setup 6 was not found. Install it (winget install JRSoftware.InnoSetup --scope user), pass -p:InnoCompiler=&lt;path to ISCC.exe&gt;, or skip the setup with -p:BuildInstaller=false." />
 
-    <!--
-      Restore and build each year in-process. (Not via Exec: that runs through cmd.exe, which some machines block.)
-      The restore gets an extra property so its evaluation isn't reused for the build.
-    -->
+    <!-- An all-users copy as well as a per-user one means two add-ins with the same AddInId, and Revit refuses one -->
+    <Warning Condition="'$(Flavour)' == 'Public' And (Exists('$(ProgramData)\Autodesk\ApplicationPlugins\$(BundleName)') Or Exists('$(ProgramW6432)\Autodesk\ApplicationPlugins\$(BundleName)'))"
+             Text="The add-in is installed for all users on this machine. The Public setup will refuse to install alongside it." />
+
+    <RemoveDir Directories="$(FlavourStage)" />
+    <Message Importance="high" Text="Staging External Access Links Manager $(Version) ($(Flavour), $(BundleConfiguration)) for Revit @(BundleRevitYear->'%(Identity)', ', ')" />
+  </Target>
+
+  <!--
+    Restore, then build, each year in-process, copying its files into the bundle for its location.
+    The restore gets an extra property so its evaluation isn't reused for the build.
+  -->
+  <Target Name="_DeployBuildYears">
     <MSBuild Projects="$(MSBuildProjectFullPath)" Targets="Restore"
-             Properties="Configuration=$(BundleConfiguration) R%(BundleRevitYear.Identity);_BundleRestore=true" />
+             Properties="Configuration=$(BundleConfiguration) R%(BundleRevitYear.Short);_BundleRestore=true" />
     <MSBuild Projects="$(MSBuildProjectFullPath)" Targets="Build"
-             Properties="Configuration=$(BundleConfiguration) R%(BundleRevitYear.Identity);StageBundle=true" />
+             Properties="Configuration=$(BundleConfiguration) R%(BundleRevitYear.Short);BundleYearDir=$(FlavourStage)\%(BundleRevitYear.Location)\$(BundleName)\Contents\R%(BundleRevitYear.Identity)\" />
+  </Target>
 
+  <!-- Once per location: its PackageContents.xml, listing only the years staged there, plus the shared Contents -->
+  <Target Name="_DeployBundles" Outputs="%(BundleRevitYear.Location)">
     <PropertyGroup>
-      <_PackageContents>$([System.IO.File]::ReadAllText('$(RepoRoot)bundle\PackageContents.xml').Replace('__VERSION__', '$(Version)'))</_PackageContents>
+      <_BundleDir>$(FlavourStage)\%(BundleRevitYear.Location)\$(BundleName)\</_BundleDir>
+      <_ComponentTemplate>$([System.IO.File]::ReadAllText('$(RepoRoot)bundle\PackageContents.Component.xml'))</_ComponentTemplate>
     </PropertyGroup>
-    <WriteLinesToFile File="$(BundleDir)PackageContents.xml" Lines="$([MSBuild]::Escape($(_PackageContents)))" Overwrite="true" Encoding="UTF-8" />
+    <!-- Each year in this bundle gets its Components block as metadata, then they're joined. (A property can't
+         collect them: batched property updates don't see each other.) Years are four digits and in order, so the
+         first and last four characters of the joined list are the series range. -->
+    <ItemGroup>
+      <BundleRevitYear>
+        <Component>$(_ComponentTemplate.Replace('__YEAR__', '%(Identity)'))</Component>
+      </BundleRevitYear>
+    </ItemGroup>
+    <PropertyGroup>
+      <_Components>@(BundleRevitYear->'%(Component)', '')</_Components>
+      <_Years>@(BundleRevitYear->'%(Identity)', '')</_Years>
+      <_SeriesMin>$(_Years.Substring(0, 4))</_SeriesMin>
+      <_SeriesMax>$(_Years.Substring($([MSBuild]::Subtract($(_Years.Length), 4))))</_SeriesMax>
+      <_PackageContents>$([System.IO.File]::ReadAllText('$(RepoRoot)bundle\PackageContents.xml').Replace('__COMPONENTS__', '$(_Components.TrimEnd())').Replace('__SERIES_MIN__', '$(_SeriesMin)').Replace('__SERIES_MAX__', '$(_SeriesMax)').Replace('__VERSION__', '$(Version)'))</_PackageContents>
+    </PropertyGroup>
+    <WriteLinesToFile File="$(_BundleDir)PackageContents.xml" Lines="$([MSBuild]::Escape($(_PackageContents)))" Overwrite="true" Encoding="UTF-8" />
 
     <ItemGroup>
-      <_BundleAsset Include="$(RepoRoot)bundle\Contents\**\*" />
+      <_BundleAsset Remove="@(_BundleAsset)" />
+      <_BundleAsset Include="$(RepoRoot)bundle\Contents\**\*;$(RepoRoot)LICENSE;$(RepoRoot)THIRD-PARTY-NOTICES.md;$(RepoRoot)licenses\*" />
     </ItemGroup>
-    <Copy SourceFiles="@(_BundleAsset)" DestinationFiles="@(_BundleAsset->'$(BundleDir)Contents\%(RecursiveDir)%(Filename)%(Extension)')" />
-
-    <!-- Zip the staged bundle (with its top-level .bundle folder, as the App Store expects). Written to %TEMP% first
-         so the zip isn't inside the folder being zipped, then moved in beside the bundle. -->
-    <PropertyGroup>
-      <_BundleZipTemp>$([System.IO.Path]::GetTempPath())LinksManager-$([System.Guid]::NewGuid().ToString('N')).zip</_BundleZipTemp>
-    </PropertyGroup>
-    <ZipDirectory Condition="'$(DeployRoot)' == '$(StageRoot)'" SourceDirectory="$(StageRoot)" DestinationFile="$(_BundleZipTemp)" />
-    <Move Condition="'$(DeployRoot)' == '$(StageRoot)'" SourceFiles="$(_BundleZipTemp)" DestinationFiles="$(StageRoot)\$(BundleName).zip" />
-
-    <!-- A second copy of the bundle means two add-ins with the same AddInId, and Revit refuses the duplicate -->
-    <Warning Condition="Exists('$(ProgramData)\Autodesk\ApplicationPlugins\$(BundleName)')"
-             Text="A machine-wide copy is installed in $(ProgramData)\Autodesk\ApplicationPlugins. Revit 2024-2026 will also load it alongside a per-user copy; uninstall it first." />
-    <Warning Condition="Exists('$(ProgramW6432)\Autodesk\ApplicationPlugins\$(BundleName)')"
-             Text="A machine-wide copy is installed in $(ProgramW6432)\Autodesk\ApplicationPlugins. Revit 2027 will also load it alongside a per-user copy; uninstall it first." />
-
-    <Message Importance="high" Text="  " />
-    <Message Importance="high" Condition="'$(DeployRoot)' == '$(StageRoot)'" Text="Staged at: $(DeployRoot)" />
-    <Message Importance="high" Condition="'$(DeployRoot)' != '$(StageRoot)'" Text="Deployed straight to: $(BundleDir)" />
-    <Message Importance="high" Condition="'$(DeployRoot)' == '$(StageRoot)'" Text="Per-user install (Revit 2024-2027), with Revit closed - copy this into $(PerUserPluginsDir)" />
-    <Message Importance="high" Condition="'$(DeployRoot)' == '$(StageRoot)'" Text="    $(BundleName)\   (folder - delete the old one first, then copy)" />
-    <Message Importance="high" Condition="'$(DeployRoot)' == '$(StageRoot)'" Text="App Store upload:  $(BundleName).zip" />
+    <Copy SourceFiles="@(_BundleAsset)" DestinationFiles="@(_BundleAsset->'$(_BundleDir)Contents\%(RecursiveDir)%(Filename)%(Extension)')" />
   </Target>
+
+  <!-- Public only: the bundle zipped with its .bundle folder at the top, for a GitHub release -->
+  <Target Name="_DeployZip" Condition="'$(Flavour)' == 'Public'">
+    <ZipDirectory SourceDirectory="$(FlavourStage)\ApplicationPlugins" DestinationFile="$(FlavourStage)\$(BundleName).zip" Overwrite="true" />
+  </Target>
+
+  <!-- The setup exe, from the flavour's Inno Setup script -->
+  <Target Name="_DeployInstaller" Condition="'$(BuildInstaller)' == 'true'">
+    <PropertyGroup>
+      <_InnoArguments>/Q &quot;/DFlavour=$(Flavour)&quot; &quot;/DAppVersion=$(Version)&quot; &quot;/DStageDir=$(FlavourStage)&quot; &quot;/DRepoRoot=$(RepoRoot.TrimEnd('\'))&quot; &quot;/O$(FlavourStage)&quot; &quot;/F$(SetupName)&quot; $(InnoExtraArguments)</_InnoArguments>
+    </PropertyGroup>
+    <RunTool FileName="$(InnoCompiler)" Arguments="$(_InnoArguments) &quot;$(InstallerScript)&quot;" />
+  </Target>
+
+  <!-- Any other flavours, last so they can set what's above for themselves -->
+  <Import Project="$(ExtraDeployTargets)" Condition="'$(ExtraDeployTargets)' != '' And Exists('$(ExtraDeployTargets)')" />
 
 </Project>
