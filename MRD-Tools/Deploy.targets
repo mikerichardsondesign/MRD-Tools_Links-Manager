@@ -36,6 +36,7 @@
     <StageRoot Condition="'$(StageRoot)' == ''">C:\Temp\LinksManager-Deploy</StageRoot>
     <FlavourStage>$(StageRoot)\$(Flavour)</FlavourStage>
     <BuildInstaller Condition="'$(BuildInstaller)' == ''">true</BuildInstaller>
+    <HelpPageSource Condition="'$(HelpPageSource)' == ''">$(RepoRoot)bundle\Contents\External Access Links Manager.html</HelpPageSource>
     <SetupName Condition="'$(Flavour)' == 'Public'">LinksManager-$(Version)-Setup</SetupName>
     <InstallerScript Condition="'$(Flavour)' == 'Public'">$(RepoRoot)installer\LinksManager.iss</InstallerScript>
     <InnoCompiler Condition="'$(InnoCompiler)' == '' And Exists('$(LOCALAPPDATA)\Programs\Inno Setup 6\ISCC.exe')">$(LOCALAPPDATA)\Programs\Inno Setup 6\ISCC.exe</InnoCompiler>
@@ -161,9 +162,17 @@
     </PropertyGroup>
     <WriteLinesToFile File="$(_BundleDir)PackageContents.xml" Lines="$([MSBuild]::Escape($(_PackageContents)))" Overwrite="true" Encoding="UTF-8" />
 
+    <!-- The help page gets the version filled in like the manifest; everything else in Contents is copied as it is -->
+    <PropertyGroup>
+      <_HelpPageName>External Access Links Manager.html</_HelpPageName>
+      <_HelpPage>$([System.IO.File]::ReadAllText('$(HelpPageSource)').Replace('__VERSION__', '$(Version)'))</_HelpPage>
+    </PropertyGroup>
+    <WriteLinesToFile File="$(_BundleDir)Contents\$(_HelpPageName)" Lines="$([MSBuild]::Escape($(_HelpPage)))" Overwrite="true" Encoding="UTF-8" />
+
     <ItemGroup>
       <_BundleAsset Remove="@(_BundleAsset)" />
-      <_BundleAsset Include="$(RepoRoot)bundle\Contents\**\*;$(RepoRoot)LICENSE;$(RepoRoot)THIRD-PARTY-NOTICES.md;$(RepoRoot)licenses\*" />
+      <_BundleAsset Include="$(RepoRoot)bundle\Contents\**\*;$(RepoRoot)LICENSE;$(RepoRoot)THIRD-PARTY-NOTICES.md;$(RepoRoot)licenses\*"
+                    Exclude="$(RepoRoot)bundle\Contents\$(_HelpPageName)" />
     </ItemGroup>
     <Copy SourceFiles="@(_BundleAsset)" DestinationFiles="@(_BundleAsset->'$(_BundleDir)Contents\%(RecursiveDir)%(Filename)%(Extension)')" />
   </Target>

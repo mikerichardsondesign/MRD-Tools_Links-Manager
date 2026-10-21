@@ -1,0 +1,235 @@
+﻿<!DOCTYPE html>
+<!-- Help page for the add-in, opened by F1 on the ribbon button and named in PackageContents.xml.
+     Self-contained: no scripts and nothing fetched from the web, only the images in Resources\.
+     The version in the header is filled in from the csproj when the bundle is staged. -->
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>External Access Links Manager – Help</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --surface: #f5f7f8;
+    --text: #1f2a30;
+    --muted: #546e7a;
+    --rule: #dde3e6;
+    --brand: #455a64;
+    --brand-text: #ffffff;
+    --accent: #ffb300;
+    --accent-text: #1f2a30;
+    --note-bg: #fff8e1;
+    --link: #2e5d73;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #161b1e;
+      --surface: #1f262a;
+      --text: #e3e9ec;
+      --muted: #a3b4bc;
+      --rule: #34414a;
+      --brand: #37474f;
+      --brand-text: #ffffff;
+      --accent: #ffca28;
+      --accent-text: #161b1e;
+      --note-bg: #2b2616;
+      --link: #9cc8dc;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.55 "Segoe UI", system-ui, sans-serif;
+  }
+  header { background: var(--brand); color: var(--brand-text); }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 20px; }
+  header .wrap { display: flex; gap: 16px; align-items: center; padding-top: 20px; padding-bottom: 20px; }
+  header img { width: 64px; height: 64px; border-radius: 8px; flex: none; }
+  header h1 { margin: 0; font-size: 24px; font-weight: 600; }
+  header p { margin: 4px 0 0; opacity: 0.85; font-size: 14px; }
+  nav { background: var(--surface); border-bottom: 1px solid var(--rule); }
+  nav .wrap { display: flex; flex-wrap: wrap; gap: 4px 18px; padding-top: 10px; padding-bottom: 10px; font-size: 14px; }
+  a { color: var(--link); }
+  nav a { text-decoration: none; }
+  nav a:hover { text-decoration: underline; }
+  main { padding-bottom: 48px; }
+  h2 { margin: 36px 0 8px; font-size: 20px; font-weight: 600; border-bottom: 2px solid var(--accent); padding-bottom: 4px; }
+  h3 { margin: 22px 0 6px; font-size: 16px; font-weight: 600; }
+  p, ul, ol { margin: 8px 0; }
+  li { margin: 4px 0; }
+  code { font-family: Consolas, monospace; font-size: 13.5px; background: var(--surface); padding: 1px 4px; border-radius: 4px; overflow-wrap: anywhere; }
+  table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 14px; }
+  th, td { text-align: left; vertical-align: top; padding: 6px 10px; border-bottom: 1px solid var(--rule); }
+  th { background: var(--surface); font-weight: 600; }
+  figure { margin: 16px 0; }
+  figure img { display: block; max-width: 100%; height: auto; border: 1px solid var(--rule); border-radius: 6px; }
+  figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  .n {
+    display: inline-block; min-width: 1.5em; padding: 0 5px; border-radius: 9px;
+    background: var(--accent); color: var(--accent-text);
+    font-size: 12px; font-weight: 700; line-height: 1.5em; text-align: center;
+  }
+  .note { background: var(--note-bg); border-left: 4px solid var(--accent); padding: 10px 14px; border-radius: 4px; margin: 14px 0; }
+  .note p { margin: 4px 0; }
+  footer { border-top: 1px solid var(--rule); color: var(--muted); font-size: 13px; }
+  footer .wrap { padding-top: 16px; padding-bottom: 24px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <img src="Resources/mrd-tools-logo.png" alt="MRD Tools">
+    <div>
+      <h1>External Access Links Manager</h1>
+      <p>Mike Richardson Design · Version __VERSION__ · Autodesk® Revit® 2024–2027</p>
+    </div>
+  </div>
+</header>
+
+<nav>
+  <div class="wrap">
+    <a href="#overview">Overview</a>
+    <a href="#start">Getting started</a>
+    <a href="#single">One project</a>
+    <a href="#batch">Batch</a>
+    <a href="#reading">Reading the links</a>
+    <a href="#changes">Making changes</a>
+    <a href="#reports">Reports</a>
+    <a href="#notes">Important notes</a>
+    <a href="#install">Install</a>
+    <a href="#history">Version history</a>
+    <a href="#contact">Contact</a>
+  </div>
+</nav>
+
+<main class="wrap">
+
+<h2 id="overview">Overview</h2>
+<p>External Access Links Manager shows the links in a Revit project file without opening it. Pick a project, or a folder of projects, and it lists every Revit, CAD, DWF and other link with its path, path type and load state.</p>
+<p>From there you can re-path links, one at a time, several at once or all of a type to one folder, and set each to load or unload. The changes are written into the project file and take effect the next time it is opened. You can also save a text or Excel report of every link, with or without making changes.</p>
+
+<h2 id="start">Getting started</h2>
+<ol>
+  <li>Open Revit. No project needs to be open.</li>
+  <li>On the <b>Add-Ins</b> tab, find the <b>MRD Tools</b> panel and open the <b>Links Manager</b> drop-down.</li>
+  <li>Choose <b>Links Manager</b> to work on one project, or <b>Links Manager Batch</b> to work on every project in a folder.</li>
+</ol>
+
+<h2 id="single">Links Manager: one project</h2>
+<figure>
+  <img src="Resources/links-manager.jpg" alt="The Links Manager window, with numbered callouts">
+  <figcaption>Links Manager. The numbers match the steps on this page.</figcaption>
+</figure>
+<ol>
+  <li>Click <b>Browse Project</b> <span class="n">1</span> and pick a Revit project (<code>.rvt</code>). The window fills with that project's links.</li>
+  <li>Review and change the links, as described under <a href="#reading">Reading the links</a> and <a href="#changes">Making changes</a>.</li>
+  <li>Click <b>Make Changes</b> <span class="n">6</span> to write the changes into the project.</li>
+</ol>
+<p>To look at another project, click <b>Browse Project</b> again. The new project's links replace the current ones.</p>
+
+<h2 id="batch">Links Manager Batch: a folder of projects</h2>
+<figure>
+  <img src="Resources/links-manager-batch.jpg" alt="The Batch Links Manager window, with numbered callouts">
+  <figcaption>Links Manager Batch. The numbers match the steps on this page.</figcaption>
+</figure>
+<ol>
+  <li>Click <b>Browse Folder</b> <span class="n">8</span> and pick a folder of Revit projects. Tick <b>Search Subdirectories</b> first to include the folders inside it, but expect a large folder tree to take a while.</li>
+  <li>Choose the projects to process with the <b>To Process</b> checkboxes <span class="n">9</span>. Or use <b>Check All / No Files</b>, or select several rows and click <b>Check Selected Rows</b> or <b>Uncheck Selected Rows</b> <span class="n">11</span>.</li>
+  <li>Click <b>Fix File Selection Choice</b> <span class="n">10</span>. The link lists fill with every chosen project's links, with a <b>Project Name</b> column to tell them apart.</li>
+  <li>Review and change the links, then click <b>Make Changes</b> <span class="n">6</span>. A summary lists any project that couldn't be changed.</li>
+</ol>
+<p>To start again with a different folder or selection, click <b>Clear File Selection Choice</b> <span class="n">12</span>.</p>
+
+<h2 id="reading">Reading the links</h2>
+<p>The links are split across four tabs: <b>Revit</b>, <b>CAD</b>, <b>DWF</b> and <b>Other</b>. Other holds things such as keynote and classification files. The Revit, CAD and DWF tabs each have two lists:</p>
+<ul>
+  <li><b>Last saved link status</b> (upper): the links as they were when the project was last saved.</li>
+  <li><b>Current status which will be applied upon next open of project</b> (lower): what the links will be the next time the project opens. This is the list you change.</li>
+</ul>
+<table>
+  <tr><th>Column</th><th>Shows</th></tr>
+  <tr><td>Project Name</td><td>The project the link belongs to (batch tool only)</td></tr>
+  <tr><td>Link Id</td><td>The link's Revit element ID</td></tr>
+  <tr><td>Link Name</td><td>The linked file's name</td></tr>
+  <tr><td>Path Type</td><td>Relative or Absolute</td></tr>
+  <tr><td>Link State</td><td>Loaded, Unloaded or NotFound</td></tr>
+  <tr><td>Link Path</td><td>The full path to the linked file, including its name</td></tr>
+  <tr><td>Last Saved</td><td>When the linked file was last saved, or "Date Not Found" if it can't be found (upper list)</td></tr>
+</table>
+
+<h2 id="changes">Making changes</h2>
+<p>All changes are made in the lower list, and nothing is written to the project until you click <b>Make Changes</b> <span class="n">6</span>.</p>
+<h3>Load or unload links</h3>
+<ul>
+  <li>Tick or clear a link's <b>Is Loaded</b> checkbox <span class="n">3</span>.</li>
+  <li>Use <b>Load All</b> or <b>Unload All</b> <span class="n">13</span> for every link on the tab.</li>
+  <li>Select several rows and click <b>Load Selected Rows</b> or <b>Unload Selected Rows</b> <span class="n">14</span>.</li>
+</ul>
+<h3>Re-path links</h3>
+<ul>
+  <li>Click a link's <b>Browse</b> button in the <b>Repath</b> column <span class="n">4</span> to pick its new file.</li>
+  <li>Select several rows and click <b>Repath Selected Rows</b> to point them all at one folder.</li>
+  <li>To re-path every link on the tab to one folder, click <b>Browse Folder</b> <span class="n">5</span> in the lower bar, then tick the <b>Repath All … Links</b> checkbox. Clear it to undo.</li>
+  <li>Click <b>Reset Paths</b> <span class="n">15</span> to put the paths back as they were.</li>
+</ul>
+<p>Links whose path type is Relative are re-pathed with a relative path, unless you tick <b>Repath with Absolute Paths</b>. A link on a different drive or network share from the project always gets its full path, because no relative path exists.</p>
+<p>When you re-path a link, set it to Loaded as well, so Revit picks up the new file when the project opens.</p>
+<h3>Commit or close</h3>
+<p>Click <b>Make Changes</b> <span class="n">6</span> to write the changes. Tick the checkbox beside it to get a text file listing the result. <b>Close</b> <span class="n">7</span> leaves without saving anything you haven't committed.</p>
+
+<h2 id="reports">Reports</h2>
+<p><b>Generate Text File – Current Status</b> and <b>Export All Paths to Excel</b> <span class="n">2</span> list every link in the project, both as last saved and as it will be when the project next opens. You can run them before or after making changes; neither changes the project.</p>
+<ul>
+  <li>The text file is tab-delimited and opens in your default text editor.</li>
+  <li>The Excel workbook has a sheet for each status, a <b>Link Type</b> column and filters on every column. Save it as a new file: it won't overwrite an existing one.</li>
+</ul>
+
+<h2 id="notes">Important notes</h2>
+<div class="note">
+  <p><b>Workshared projects.</b> Changing a workshared project sets it to a transmitted state. The next time it opens, Revit asks whether to save it as a central model in its current location, or to work with it temporarily.</p>
+</div>
+<ul>
+  <li>The project must not be open in Revit, by you or anyone else, when you click <b>Make Changes</b>.</li>
+  <li>Changes take effect the next time the project is opened. Until then, Revit uses the links as last saved.</li>
+  <li>IFC and point cloud links aren't supported and don't appear.</li>
+</ul>
+
+<h2 id="install">Install and uninstall</h2>
+<p>Run <code>LinksManager-&lt;version&gt;-Setup.exe</code> from the latest release. It installs for you only, needs no admin rights, and covers every Revit year from 2024 to 2027, in the folder Revit reads at start-up.</p>
+<ul>
+  <li>The setup isn't digitally signed, so Windows SmartScreen warns about an unknown publisher. Choose <b>More info</b>, then <b>Run anyway</b>.</li>
+  <li>The first time each Revit year loads the add-in, Revit asks whether to load it. Choose <b>Always Load</b>.</li>
+  <li>If the add-in is already installed for all users on the computer, the setup stops, because Revit would refuse a second copy.</li>
+</ul>
+<p>To install without a setup, close Revit and unzip <code>External Access Links Manager.bundle.zip</code> into <code>%APPDATA%\Autodesk\ApplicationPlugins</code>.</p>
+<p>To uninstall, close Revit and remove <b>External Access Links Manager</b> from <b>Settings › Apps</b>.</p>
+
+<h2 id="history">Version history</h2>
+<table>
+  <tr><th>Version</th><th>Changes</th></tr>
+  <tr><td>9.1.0</td><td>One install covers Revit 2024–2027, from a new setup that needs no admin rights. The files Excel export needs are now included for Revit 2025 and 2026. Fixes opening the text report and Excel file on Revit 2025 and later, message box titles, relative re-pathing to another drive or network share, and the batch summary, which now lists any project that couldn't be changed.</td></tr>
+  <tr><td>9.0.0</td><td>Updated to work with Revit 2024</td></tr>
+  <tr><td>8.0.0</td><td>Updated to work with Revit 2023</td></tr>
+  <tr><td>7.0.0</td><td>Updated to work with Revit 2022</td></tr>
+  <tr><td>6.0.0</td><td>Updated to work with Revit 2021</td></tr>
+  <tr><td>5.0.0</td><td>Updated to work with Revit 2020</td></tr>
+  <tr><td>4.0.0</td><td>Updated to work with Revit 2019. Added Excel export; re-path, load and unload by selecting several rows; batch tool: check and uncheck files by selecting several rows, and a Search Subdirectories option; resizable split panels; relative re-pathing when the path type is Relative.</td></tr>
+  <tr><td>3.0.0</td><td>Updated to work with Revit 2018. Added the batch tool, to process every Revit project in a folder, and the Load All / Unload All checkboxes.</td></tr>
+</table>
+
+<h2 id="contact">Contact</h2>
+<p>Mike Richardson Design · <a href="https://www.mikerichardsondesign.com">www.mikerichardsondesign.com</a> · <a href="mailto:mike@mikerichardsondesign.com">mike@mikerichardsondesign.com</a></p>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    Released under the MIT licence: see <code>LICENSE</code> beside this page. It ships EPPlus 4.5.3.3 (LGPL-3.0) and Microsoft.Extensions libraries (MIT): see <code>THIRD-PARTY-NOTICES.md</code>. Autodesk and Revit are registered trademarks of Autodesk, Inc.
+  </div>
+</footer>
+
+</body>
+</html>

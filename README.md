@@ -54,7 +54,7 @@ C:\Temp\LinksManager-Deploy\Public\
 - **Trying a setup safely:** `<setup>.exe /TestRoot=<an empty folder>` installs the bundle under that folder instead of Revit's; uninstall it from Apps afterwards.
 - **Options:** `-p:StageRoot=D:\somewhere` stages elsewhere (the flavour's subfolder is emptied first). `-p:BundleConfiguration=Debug` stages Debug builds. `-p:BuildInstaller=false` skips the setup.
 - **Other flavours:** set `ExtraDeployTargets` in `MRD-Tools\Deploy.local.props` (not committed) to a targets file of your own. For its `-p:Flavour=<name>` it adds `BundleRevitYear` items, each with the `Location` folder its bundle is staged under, and sets `SetupName` and `InstallerScript`. See the comment at the top of `MRD-Tools\Deploy.targets`.
-- **New version:** change `<Version>` in the csproj. The bundle manifest, the setup and the version dialog all follow it.
+- **New version:** change `<Version>` in the csproj. The bundle manifest, the help page, the setup and the version dialog all follow it.
 
 ## Release
 
