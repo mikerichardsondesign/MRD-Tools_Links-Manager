@@ -1,0 +1,100 @@
+<Project>
+
+  <!--
+    Assembles the App Store style bundle for every supported Revit year into a staging folder laid out exactly like
+    an ApplicationPlugins folder, ready to copy across by hand:
+
+      dotnet build MRDTools.csproj -t:Deploy
+
+      C:\Temp\LinksManager-Deploy\
+        External Access Links Manager.bundle\       folder to copy into ApplicationPlugins
+        External Access Links Manager.bundle.zip    the same bundle zipped, for the App Store
+
+    It never writes to a live add-in folder, so it needs no administrator rights and can't fail because Revit holds
+    a lock. It is NOT wired into Build. Builds all four years in Release, whatever -c says.
+
+      Stage elsewhere:          -p:StageRoot=D:\somewhere   (a folder of its own: it is emptied first)
+      Stage Debug builds:       -p:BundleConfiguration=Debug
+      Write straight to a live folder (close Revit first; no zip, nothing deleted):
+        -p:DeployRoot="C:\Users\<you>\AppData\Roaming\Autodesk\ApplicationPlugins"
+  -->
+
+  <PropertyGroup>
+    <RepoRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\'))</RepoRoot>
+    <BundleName>External Access Links Manager.bundle</BundleName>
+    <BundleConfiguration Condition="'$(BundleConfiguration)' == ''">Release</BundleConfiguration>
+    <StageRoot Condition="'$(StageRoot)' == ''">C:\Temp\LinksManager-Deploy</StageRoot>
+    <DeployRoot Condition="'$(DeployRoot)' == ''">$(StageRoot)</DeployRoot>
+    <BundleDir>$(DeployRoot)\$(BundleName)\</BundleDir>
+    <PerUserPluginsDir>$(APPDATA)\Autodesk\ApplicationPlugins</PerUserPluginsDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <BundleRevitYear Include="24;25;26;27" />
+
+    <!-- Everything that ships next to the add-in DLL. Anything else in bin stays out of the bundle. -->
+    <BundleShipFile Include="MRD-Tools.dll;MRD-Tools.pdb;MRD-Tools.addin;EPPlus.dll;MRD-Links-16x16.png;MRD-Links-32x32.png" />
+
+    <!-- EPPlus's configuration dependencies for Revit 2025/2026 (see the csproj). Where Revit has its own copy, Revit's wins. -->
+    <BundleShipFile Condition="'$(TargetFramework)' == 'net8.0-windows'"
+                    Include="Microsoft.Extensions.Configuration.dll;Microsoft.Extensions.Configuration.Abstractions.dll;Microsoft.Extensions.Configuration.FileExtensions.dll;Microsoft.Extensions.Configuration.Json.dll;Microsoft.Extensions.FileProviders.Abstractions.dll;Microsoft.Extensions.FileProviders.Physical.dll;Microsoft.Extensions.FileSystemGlobbing.dll;Microsoft.Extensions.Primitives.dll" />
+  </ItemGroup>
+
+  <!-- Runs after each year's build when Deploy asks for it (StageBundle=true) -->
+  <Target Name="StageBundleYear" AfterTargets="Build" Condition="'$(StageBundle)' == 'true'">
+    <ItemGroup>
+      <_BundleYearFile Include="@(BundleShipFile->'$(TargetDir)%(Identity)')" />
+    </ItemGroup>
+    <Error Condition="!Exists('%(_BundleYearFile.FullPath)')" Text="Deploy: %(_BundleYearFile.Filename)%(_BundleYearFile.Extension) is missing from $(TargetDir)" />
+    <Copy SourceFiles="@(_BundleYearFile)" DestinationFolder="$(BundleDir)Contents\R$(RevitVersion)\" />
+  </Target>
+
+  <Target Name="Deploy">
+    <!-- Clear staging so it is an exact picture of what to copy. Guarded so it can only ever empty the staging
+         folder, never a live add-in folder reached through -p:DeployRoot. -->
+    <RemoveDir Directories="$(DeployRoot)" Condition="'$(DeployRoot)' == '$(StageRoot)'" />
+
+    <Message Importance="high" Text="Staging External Access Links Manager $(Version) ($(BundleConfiguration)) for Revit 2024-2027" />
+
+    <!--
+      Restore and build each year in-process. (Not via Exec: that runs through cmd.exe, which some machines block.)
+      The restore gets an extra property so its evaluation isn't reused for the build.
+    -->
+    <MSBuild Projects="$(MSBuildProjectFullPath)" Targets="Restore"
+             Properties="Configuration=$(BundleConfiguration) R%(BundleRevitYear.Identity);_BundleRestore=true" />
+    <MSBuild Projects="$(MSBuildProjectFullPath)" Targets="Build"
+             Properties="Configuration=$(BundleConfiguration) R%(BundleRevitYear.Identity);StageBundle=true" />
+
+    <PropertyGroup>
+      <_PackageContents>$([System.IO.File]::ReadAllText('$(RepoRoot)bundle\PackageContents.xml').Replace('__VERSION__', '$(Version)'))</_PackageContents>
+    </PropertyGroup>
+    <WriteLinesToFile File="$(BundleDir)PackageContents.xml" Lines="$([MSBuild]::Escape($(_PackageContents)))" Overwrite="true" Encoding="UTF-8" />
+
+    <ItemGroup>
+      <_BundleAsset Include="$(RepoRoot)bundle\Contents\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_BundleAsset)" DestinationFiles="@(_BundleAsset->'$(BundleDir)Contents\%(RecursiveDir)%(Filename)%(Extension)')" />
+
+    <!-- Zip the staged bundle (with its top-level .bundle folder, as the App Store expects). Written to %TEMP% first
+         so the zip isn't inside the folder being zipped, then moved in beside the bundle. -->
+    <PropertyGroup>
+      <_BundleZipTemp>$([System.IO.Path]::GetTempPath())LinksManager-$([System.Guid]::NewGuid().ToString('N')).zip</_BundleZipTemp>
+    </PropertyGroup>
+    <ZipDirectory Condition="'$(DeployRoot)' == '$(StageRoot)'" SourceDirectory="$(StageRoot)" DestinationFile="$(_BundleZipTemp)" />
+    <Move Condition="'$(DeployRoot)' == '$(StageRoot)'" SourceFiles="$(_BundleZipTemp)" DestinationFiles="$(StageRoot)\$(BundleName).zip" />
+
+    <!-- A second copy of the bundle means two add-ins with the same AddInId, and Revit refuses the duplicate -->
+    <Warning Condition="Exists('$(ProgramData)\Autodesk\ApplicationPlugins\$(BundleName)')"
+             Text="A machine-wide copy is installed in $(ProgramData)\Autodesk\ApplicationPlugins. Revit 2024-2026 will also load it alongside a per-user copy; uninstall it first." />
+    <Warning Condition="Exists('$(ProgramW6432)\Autodesk\ApplicationPlugins\$(BundleName)')"
+             Text="A machine-wide copy is installed in $(ProgramW6432)\Autodesk\ApplicationPlugins. Revit 2027 will also load it alongside a per-user copy; uninstall it first." />
+
+    <Message Importance="high" Text="  " />
+    <Message Importance="high" Condition="'$(DeployRoot)' == '$(StageRoot)'" Text="Staged at: $(DeployRoot)" />
+    <Message Importance="high" Condition="'$(DeployRoot)' != '$(StageRoot)'" Text="Deployed straight to: $(BundleDir)" />
+    <Message Importance="high" Condition="'$(DeployRoot)' == '$(StageRoot)'" Text="Per-user install (Revit 2024-2027), with Revit closed - copy this into $(PerUserPluginsDir)" />
+    <Message Importance="high" Condition="'$(DeployRoot)' == '$(StageRoot)'" Text="    $(BundleName)\   (folder - delete the old one first, then copy)" />
+    <Message Importance="high" Condition="'$(DeployRoot)' == '$(StageRoot)'" Text="App Store upload:  $(BundleName).zip" />
+  </Target>
+
+</Project>

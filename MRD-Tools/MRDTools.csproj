@@ -69,6 +69,6 @@
     <None Update="Resources\MRD-Links-32x32.png" CopyToOutputDirectory="PreserveNewest" Link="MRD-Links-32x32.png" />
   </ItemGroup>
 
-  <Import Project="Bundle.targets" />
+  <Import Project="Deploy.targets" />
 
 </Project>

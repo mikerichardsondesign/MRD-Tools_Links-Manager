@@ -22,14 +22,23 @@ The Revit API comes from the `Nice3point.Revit.Api` NuGet packages, so a year bu
 ## Bundle and deploy
 
 ```
-dotnet msbuild MRD-Tools/MRDTools.csproj -t:Bundle
-dotnet msbuild MRD-Tools/MRDTools.csproj -t:DeployLocal
+dotnet build MRD-Tools/MRDTools.csproj -t:Deploy
 ```
 
-- **Bundle** builds all four years and writes `artifacts\External Access Links Manager.bundle.zip`, the same layout for every install. The unzipped bundle is staged in `%LOCALAPPDATA%\MRD-Tools\bundle`.
-- **DeployLocal** also installs it per-user in `%APPDATA%\Autodesk\ApplicationPlugins`, which Revit 2024–2027 all read. Close Revit first.
-- Remove any machine-wide copy before testing a per-user one: `C:\ProgramData\Autodesk\ApplicationPlugins` (Revit 2024–2026) or `C:\Program Files\Autodesk\ApplicationPlugins` (Revit 2027). Otherwise Revit sees two add-ins with the same AddInId. DeployLocal warns when it finds one.
-- To release a new version, change `<Version>` in the csproj. `PackageContents.xml` and the version dialog pick it up.
+This builds all four years in Release and stages them in `C:\Temp\LinksManager-Deploy`, laid out like an ApplicationPlugins folder. It never writes to a live add-in folder, needs no admin rights, and isn't part of a normal build.
+
+```
+C:\Temp\LinksManager-Deploy\
+  External Access Links Manager.bundle\       copy into an ApplicationPlugins folder
+  External Access Links Manager.bundle.zip    the same bundle zipped, for the App Store
+```
+
+- **Per-user install:** with Revit closed, delete any old `External Access Links Manager.bundle` from `%APPDATA%\Autodesk\ApplicationPlugins`, then copy the staged folder in. Revit 2024–2027 all read that folder.
+- **Duplicates:** remove any machine-wide copy first, from `C:\ProgramData\Autodesk\ApplicationPlugins` (Revit 2024–2026) or `C:\Program Files\Autodesk\ApplicationPlugins` (Revit 2027). Otherwise Revit sees two add-ins with the same AddInId. The Deploy target warns when it finds one.
+- **Options:** `-p:StageRoot=D:\somewhere` stages elsewhere (a folder of its own: it is emptied first). `-p:BundleConfiguration=Debug` stages Debug builds. `-p:DeployRoot="<an ApplicationPlugins folder>"` writes straight to a live folder, with no zip and nothing deleted.
+- **New version:** change `<Version>` in the csproj. `PackageContents.xml` and the version dialog pick it up.
+
+The full step-by-step is in the Deploy Runbook.
 
 ## Shipped dependencies
 
