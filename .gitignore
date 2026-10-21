@@ -1,0 +1,17 @@
+# Build output
+bin/
+obj/
+artifacts/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.SdkResolver.*.proj
+
+# Old packages.config restore folder (PackageReference uses the global cache)
+packages/
+
+# Previously shipped bundles, kept on disk for reference only
+2024backup/
+2025bundle/
