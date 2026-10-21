@@ -1,10 +1,8 @@
 ﻿using Autodesk.Revit.UI;
 using System;
 using System.IO;
-using System.Runtime.Versioning;
 using System.Windows.Media.Imaging;
 
-[assembly: SupportedOSPlatform("windows6.1")]
 namespace MRDTools
 {
     class MRDToolsPanel : IExternalApplication
@@ -19,7 +17,7 @@ namespace MRDTools
             }
             catch (NotSupportedException)
             {
-                System.Windows.MessageBox.Show("Error", "Assembly location can not be found");
+                System.Windows.MessageBox.Show("Assembly location can not be found", "Error");
             }
             
             return addInPath;

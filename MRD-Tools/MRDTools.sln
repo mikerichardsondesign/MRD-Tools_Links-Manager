@@ -1,20 +1,38 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Express 2013 for Windows Desktop
-VisualStudioVersion = 12.0.31101.0
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MRDTools", "MRDTools.csproj", "{694A5699-C5E3-438B-A803-5655409F64A9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MRDTools", "MRDTools.csproj", "{694A5699-C5E3-438B-A803-5655409F64A9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		Debug|Any CPU = Debug|Any CPU
-		Release|Any CPU = Release|Any CPU
+		Debug R24|Any CPU = Debug R24|Any CPU
+		Debug R25|Any CPU = Debug R25|Any CPU
+		Debug R26|Any CPU = Debug R26|Any CPU
+		Debug R27|Any CPU = Debug R27|Any CPU
+		Release R24|Any CPU = Release R24|Any CPU
+		Release R25|Any CPU = Release R25|Any CPU
+		Release R26|Any CPU = Release R26|Any CPU
+		Release R27|Any CPU = Release R27|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{694A5699-C5E3-438B-A803-5655409F64A9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{694A5699-C5E3-438B-A803-5655409F64A9}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{694A5699-C5E3-438B-A803-5655409F64A9}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{694A5699-C5E3-438B-A803-5655409F64A9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{694A5699-C5E3-438B-A803-5655409F64A9}.Debug R24|Any CPU.ActiveCfg = Debug R24|Any CPU
+		{694A5699-C5E3-438B-A803-5655409F64A9}.Debug R24|Any CPU.Build.0 = Debug R24|Any CPU
+		{694A5699-C5E3-438B-A803-5655409F64A9}.Debug R25|Any CPU.ActiveCfg = Debug R25|Any CPU
+		{694A5699-C5E3-438B-A803-5655409F64A9}.Debug R25|Any CPU.Build.0 = Debug R25|Any CPU
+		{694A5699-C5E3-438B-A803-5655409F64A9}.Debug R26|Any CPU.ActiveCfg = Debug R26|Any CPU
+		{694A5699-C5E3-438B-A803-5655409F64A9}.Debug R26|Any CPU.Build.0 = Debug R26|Any CPU
+		{694A5699-C5E3-438B-A803-5655409F64A9}.Debug R27|Any CPU.ActiveCfg = Debug R27|Any CPU
+		{694A5699-C5E3-438B-A803-5655409F64A9}.Debug R27|Any CPU.Build.0 = Debug R27|Any CPU
+		{694A5699-C5E3-438B-A803-5655409F64A9}.Release R24|Any CPU.ActiveCfg = Release R24|Any CPU
+		{694A5699-C5E3-438B-A803-5655409F64A9}.Release R24|Any CPU.Build.0 = Release R24|Any CPU
+		{694A5699-C5E3-438B-A803-5655409F64A9}.Release R25|Any CPU.ActiveCfg = Release R25|Any CPU
+		{694A5699-C5E3-438B-A803-5655409F64A9}.Release R25|Any CPU.Build.0 = Release R25|Any CPU
+		{694A5699-C5E3-438B-A803-5655409F64A9}.Release R26|Any CPU.ActiveCfg = Release R26|Any CPU
+		{694A5699-C5E3-438B-A803-5655409F64A9}.Release R26|Any CPU.Build.0 = Release R26|Any CPU
+		{694A5699-C5E3-438B-A803-5655409F64A9}.Release R27|Any CPU.ActiveCfg = Release R27|Any CPU
+		{694A5699-C5E3-438B-A803-5655409F64A9}.Release R27|Any CPU.Build.0 = Release R27|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

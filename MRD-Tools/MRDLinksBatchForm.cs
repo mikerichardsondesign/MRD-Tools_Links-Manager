@@ -4,7 +4,6 @@ using OfficeOpenXml;
 using OfficeOpenXml.Style;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Windows.Forms;
@@ -45,8 +44,8 @@ namespace MRDTools
         public MRDLinksBatchForm(ExternalCommandData commandData)
         {
             InitializeComponent();
+            Icon = FormIcon.Load();
 
-            chkFilesAllNone.CheckedChanged += new EventHandler(chkFilesAllNone_CheckedChanged);
             chkRevitFolder.CheckedChanged += new EventHandler(chkRevitFolder_CheckedChanged);
             chkCadFolder.CheckedChanged += new EventHandler(chkCadFolder_CheckedChanged);
             chkDwfFolder.CheckedChanged += new EventHandler(chkDwfFolder_CheckedChanged);
@@ -190,7 +189,7 @@ namespace MRDTools
         {
             if (dgv.Rows.GetRowCount(DataGridViewElementStates.Selected) == 0)
             {
-                System.Windows.MessageBox.Show("Error", LinkConstants.MsgSelectRows);
+                System.Windows.MessageBox.Show(LinkConstants.MsgSelectRows, "Error");
                 return;
             }
 
@@ -224,7 +223,7 @@ namespace MRDTools
         {
             if (dgv.Rows.GetRowCount(DataGridViewElementStates.Selected) == 0)
             {
-                System.Windows.MessageBox.Show("Error", LinkConstants.MsgSelectRows);
+                System.Windows.MessageBox.Show(LinkConstants.MsgSelectRows, "Error");
                 return;
             }
             foreach (DataGridViewRow row in dgv.SelectedRows)
@@ -714,7 +713,7 @@ namespace MRDTools
             string outputfile = Path.Combine(Path.GetTempPath(), "CurrentLinks.txt");
             using (StreamWriter sw = new StreamWriter(outputfile, false))
                 sw.Write(BuildLinkReport(prependNote: true));
-            Process.Start(outputfile);
+            ShellOpen.Open(outputfile);
         }
 
         #endregion
@@ -725,6 +724,8 @@ namespace MRDTools
         {
             bool generateTextFile = chkTextPrint.Checked;
             string outputfile = "";
+            int amendedCount = 0;
+            List<string> failures = new List<string>();
 
             foreach (FolderContentsData f in fileInfoList)
             {
@@ -738,55 +739,47 @@ namespace MRDTools
                     ModelPath mpSecond = new FilePath(filename);
                     TransmissionData transData = TransmissionData.ReadTransmissionData(mpSecond);
 
-                    if (transData != null)
+                    if (transData == null)
                     {
-                        ICollection<ElementId> externalReferences = transData.GetAllExternalFileReferenceIds();
+                        failures.Add(f.FileName + " - " + LinkConstants.MsgNoLinks);
+                        continue;
+                    }
 
-                        try
+                    ICollection<ElementId> externalReferences = transData.GetAllExternalFileReferenceIds();
+
+                    foreach (ElementId refId in externalReferences)
+                    {
+                        ExternalFileReference extRef = transData.GetLastSavedReferenceData(refId);
+                        string dataKey = extRef.GetReferencingId().ToString();
+                        string refStableId = projectFilePath + dataKey;
+
+                        SortableBindingList<LinkData> desired = null;
+                        if (extRef.ExternalFileReferenceType == ExternalFileReferenceType.RevitLink)
+                            desired = linkInfoListRvtDesired;
+                        else if (extRef.ExternalFileReferenceType == ExternalFileReferenceType.CADLink)
+                            desired = linkInfoListCadDesired;
+                        else if (extRef.ExternalFileReferenceType == ExternalFileReferenceType.DWFMarkup)
+                            desired = linkInfoListDwfDesired;
+
+                        if (desired == null) continue;
+
+                        foreach (LinkData l in desired)
                         {
-                            foreach (ElementId refId in externalReferences)
+                            if (l.RefStableId == refStableId)
                             {
-                                ExternalFileReference extRef = transData.GetLastSavedReferenceData(refId);
-                                string dataKey = extRef.GetReferencingId().ToString();
-                                string refStableId = projectFilePath + dataKey;
-
-                                SortableBindingList<LinkData> desired = null;
-                                if (extRef.ExternalFileReferenceType == ExternalFileReferenceType.RevitLink)
-                                    desired = linkInfoListRvtDesired;
-                                else if (extRef.ExternalFileReferenceType == ExternalFileReferenceType.CADLink)
-                                    desired = linkInfoListCadDesired;
-                                else if (extRef.ExternalFileReferenceType == ExternalFileReferenceType.DWFMarkup)
-                                    desired = linkInfoListDwfDesired;
-
-                                if (desired == null) continue;
-
-                                foreach (LinkData l in desired)
-                                {
-                                    if (l.RefStableId == refStableId)
-                                    {
-                                        bool loadState = l.RefLoadState == LinkConstants.StateLoaded || l.RefLoadState == LinkConstants.StateNotFound;
-                                        transData.SetDesiredReferenceData(refId, new FilePath(l.RefPath), extRef.PathType, loadState);
-                                    }
-                                }
+                                bool loadState = l.RefLoadState == LinkConstants.StateLoaded || l.RefLoadState == LinkConstants.StateNotFound;
+                                transData.SetDesiredReferenceData(refId, new FilePath(l.RefPath), extRef.PathType, loadState);
                             }
+                        }
+                    }
 
-                            transData.IsTransmitted = true;
-                            TransmissionData.WriteTransmissionData(mpSecond, transData);
-                        }
-                        catch (Exception)
-                        {
-                            System.Windows.MessageBox.Show("Error - Transmission Failed",
-                                LinkConstants.MsgTransmissionFailed + "\n" + filename);
-                        }
-                    }
-                    else
-                    {
-                        System.Windows.MessageBox.Show("Error - Link Status", LinkConstants.MsgNoLinks);
-                    }
+                    transData.IsTransmitted = true;
+                    TransmissionData.WriteTransmissionData(mpSecond, transData);
+                    amendedCount++;
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    System.Windows.MessageBox.Show("Error - Operation Failed", LinkConstants.MsgOperationFailed);
+                    failures.Add(f.FileName + " - " + ex.Message);
                 }
             }
 
@@ -797,8 +790,20 @@ namespace MRDTools
                     sw.Write(BuildLinkReport(prependNote: false));
             }
 
-            System.Windows.MessageBox.Show("Links Amended", "Changes have been applied and will take effect next time the project is opened");
-            if (generateTextFile) Process.Start(outputfile);
+            // One summary for the whole batch, so a failed project can't hide behind a success message
+            string summary = $"Changes have been applied to {amendedCount} project(s) and will take effect next time each project is opened";
+            if (failures.Count == 0)
+            {
+                System.Windows.MessageBox.Show(summary, "Links Amended");
+            }
+            else
+            {
+                summary += "\n\n" + LinkConstants.MsgBatchTransmissionFailed + ":\n" + string.Join("\n", failures);
+                System.Windows.MessageBox.Show(summary, amendedCount == 0 ? "Error - No Links Amended" : "Error - Some Links Not Amended",
+                    System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+            }
+
+            if (generateTextFile) ShellOpen.Open(outputfile);
         }
 
         #endregion
@@ -874,7 +879,7 @@ namespace MRDTools
                 string filename = saveDialog.FileName;
                 if (File.Exists(filename))
                 {
-                    System.Windows.MessageBox.Show("Error", "You must create a new excel file. Overwriting is not permitted");
+                    System.Windows.MessageBox.Show("You must create a new excel file. Overwriting is not permitted", "Error");
                     return;
                 }
 
@@ -890,7 +895,7 @@ namespace MRDTools
 
                     package.Save();
                 }
-                Process.Start(filename);
+                ShellOpen.Open(filename);
             }
         }
 
@@ -929,7 +934,7 @@ namespace MRDTools
         {
             if (filesToProcessDGV.Rows.GetRowCount(DataGridViewElementStates.Selected) == 0)
             {
-                System.Windows.MessageBox.Show("Error", "Please select rows from the 'FOLDER CONTENTS' table and try again");
+                System.Windows.MessageBox.Show("Please select rows from the 'FOLDER CONTENTS' table and try again", "Error");
                 return;
             }
             foreach (DataGridViewRow row in filesToProcessDGV.SelectedRows)
@@ -944,7 +949,7 @@ namespace MRDTools
         {
             if (filesToProcessDGV.Rows.GetRowCount(DataGridViewElementStates.Selected) == 0)
             {
-                System.Windows.MessageBox.Show("Error", "Please select rows from the 'FOLDER CONTENTS' table and try again");
+                System.Windows.MessageBox.Show("Please select rows from the 'FOLDER CONTENTS' table and try again", "Error");
                 return;
             }
             foreach (DataGridViewRow row in filesToProcessDGV.SelectedRows)

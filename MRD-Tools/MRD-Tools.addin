@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RevitAddIns>
+  <AddIn Type="Application">
+    <Name>MRDToolsPanel</Name>
+    <Assembly>.\MRD-Tools.dll</Assembly>
+    <AddInId>a13ebe09-7ce2-4e53-9b60-efe58899d858</AddInId>
+    <FullClassName>MRDTools.MRDToolsPanel</FullClassName>
+    <VendorId>MRDE</VendorId>
+    <VendorDescription>Mike Richardson, www.MikeRichardsonDesign.com</VendorDescription>
+  </AddIn>
+</RevitAddIns>

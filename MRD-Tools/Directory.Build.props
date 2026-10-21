@@ -1,0 +1,20 @@
+<Project>
+
+  <!--
+    Maps the build configuration to a Revit year. This lives here rather than in the csproj because it must be
+    known before the SDK sets up the obj folder: each year restores into its own obj\R20xx\, as the years target
+    different frameworks and would otherwise overwrite one shared project.assets.json on every switch.
+
+    Pick a configuration in the Visual Studio toolbar, or pass -c "Release R27".
+    Plain Debug/Release (or no configuration) builds the newest year.
+  -->
+  <PropertyGroup>
+    <RevitVersion Condition="'$(RevitVersion)' == '' And $(Configuration.EndsWith('R24'))">2024</RevitVersion>
+    <RevitVersion Condition="'$(RevitVersion)' == '' And $(Configuration.EndsWith('R25'))">2025</RevitVersion>
+    <RevitVersion Condition="'$(RevitVersion)' == '' And $(Configuration.EndsWith('R26'))">2026</RevitVersion>
+    <RevitVersion Condition="'$(RevitVersion)' == '' And $(Configuration.EndsWith('R27'))">2027</RevitVersion>
+    <RevitVersion Condition="'$(RevitVersion)' == ''">2027</RevitVersion>
+    <BaseIntermediateOutputPath>obj\R$(RevitVersion)\</BaseIntermediateOutputPath>
+  </PropertyGroup>
+
+</Project>

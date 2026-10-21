@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- The version placeholders are filled in from the csproj <Version> when the bundle is built (dotnet msbuild -t:Bundle). -->
+<ApplicationPackage SchemaVersion="1.0" AutodeskProduct="Revit" Name="External Access Links Manager" Description="Interrogate and Manage Links in a Autodesk® Revit® project without having to open it." AppVersion="__VERSION__" FriendlyVersion="__VERSION__" ProductType="Application" SupportedLocales="Enu" AppNameSpace="appstore.exchange.autodesk.com" Author="Mike Richardson" HelpFile="./Contents/External Access Links Manager.html" OnlineDocumentation="www.mikerichardsondesign.com" ProductCode="{90877E67-87BD-4D4C-AC97-CBEBBB7D8416}" UpgradeCode="{096F86BD-2171-4E3D-AAE9-B99BCE9FFBEB}" Icon="./Contents/Resources/favicon.ico">
+  <CompanyDetails Name="Mike Richardson Design" Email="mike@mikerichardsondesign.com" Url="www.mikerichardsondesign.com" Phone=" " />
+  <RuntimeRequirements OS="Win64" Platform="Revit" SeriesMin="R2024" SeriesMax="R2027" />
+  <Components Description="2024 parts">
+    <RuntimeRequirements OS="Win64" Platform="Revit" SeriesMin="R2024" SeriesMax="R2024" />
+    <ComponentEntry AppName="External Access Links Manager" Version="__VERSION__" ModuleName="./Contents/R2024/MRD-Tools.addin" AppDescription="External Access Links Manager" />
+  </Components>
+  <Components Description="2025 parts">
+    <RuntimeRequirements OS="Win64" Platform="Revit" SeriesMin="R2025" SeriesMax="R2025" />
+    <ComponentEntry AppName="External Access Links Manager" Version="__VERSION__" ModuleName="./Contents/R2025/MRD-Tools.addin" AppDescription="External Access Links Manager" />
+  </Components>
+  <Components Description="2026 parts">
+    <RuntimeRequirements OS="Win64" Platform="Revit" SeriesMin="R2026" SeriesMax="R2026" />
+    <ComponentEntry AppName="External Access Links Manager" Version="__VERSION__" ModuleName="./Contents/R2026/MRD-Tools.addin" AppDescription="External Access Links Manager" />
+  </Components>
+  <Components Description="2027 parts">
+    <RuntimeRequirements OS="Win64" Platform="Revit" SeriesMin="R2027" SeriesMax="R2027" />
+    <ComponentEntry AppName="External Access Links Manager" Version="__VERSION__" ModuleName="./Contents/R2027/MRD-Tools.addin" AppDescription="External Access Links Manager" />
+  </Components>
+</ApplicationPackage>

@@ -4,7 +4,6 @@ using OfficeOpenXml;
 using OfficeOpenXml.Style;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Windows.Forms;
@@ -44,6 +43,7 @@ namespace MRDTools
         public MRDLinksForm(ExternalCommandData commandData)
         {
             InitializeComponent();
+            Icon = FormIcon.Load();
 
             btnBrowseFolderRevitDGV.Click += new EventHandler(btnBrowseFolderRevitDGV_Click);
             btnBrowseFolderDwf.Click += new EventHandler(btnBrowseFolderDwf_Click);
@@ -173,7 +173,7 @@ namespace MRDTools
         {
             if (dgv.Rows.GetRowCount(DataGridViewElementStates.Selected) == 0)
             {
-                System.Windows.MessageBox.Show("Error", LinkConstants.MsgSelectRows);
+                System.Windows.MessageBox.Show(LinkConstants.MsgSelectRows, "Error");
                 return;
             }
 
@@ -207,7 +207,7 @@ namespace MRDTools
         {
             if (dgv.Rows.GetRowCount(DataGridViewElementStates.Selected) == 0)
             {
-                System.Windows.MessageBox.Show("Error", LinkConstants.MsgSelectRows);
+                System.Windows.MessageBox.Show(LinkConstants.MsgSelectRows, "Error");
                 return;
             }
             foreach (DataGridViewRow row in dgv.SelectedRows)
@@ -427,22 +427,22 @@ namespace MRDTools
                                 sw.Write(BuildLinkReport(prependNote: false));
                         }
 
-                        System.Windows.MessageBox.Show("Links Amended", "Changes have been applied and will take effect next time the project is opened");
-                        if (generateTextFile) Process.Start(outputfile);
+                        System.Windows.MessageBox.Show("Changes have been applied and will take effect next time the project is opened", "Links Amended");
+                        if (generateTextFile) ShellOpen.Open(outputfile);
                     }
                     catch (Exception)
                     {
-                        System.Windows.MessageBox.Show("Error - Transmission Failed", LinkConstants.MsgTransmissionFailed);
+                        System.Windows.MessageBox.Show(LinkConstants.MsgTransmissionFailed, "Error - Transmission Failed");
                     }
                 }
                 else
                 {
-                    System.Windows.MessageBox.Show("Error - Link Status", LinkConstants.MsgNoLinks);
+                    System.Windows.MessageBox.Show(LinkConstants.MsgNoLinks, "Error - Link Status");
                 }
             }
             catch (Exception)
             {
-                System.Windows.MessageBox.Show("Error - Operation Failed", LinkConstants.MsgOperationFailed);
+                System.Windows.MessageBox.Show(LinkConstants.MsgOperationFailed, "Error - Operation Failed");
             }
         }
 
@@ -455,7 +455,7 @@ namespace MRDTools
             string outputfile = Path.Combine(Path.GetTempPath(), "CurrentLinks.txt");
             using (StreamWriter sw = new StreamWriter(outputfile, false))
                 sw.Write(BuildLinkReport(prependNote: true));
-            Process.Start(outputfile);
+            ShellOpen.Open(outputfile);
         }
 
         #endregion
@@ -753,7 +753,7 @@ namespace MRDTools
                 string filename = saveDialog.FileName;
                 if (File.Exists(filename))
                 {
-                    System.Windows.MessageBox.Show("Error", "You must create a new excel file. Overwriting is not permitted");
+                    System.Windows.MessageBox.Show("You must create a new excel file. Overwriting is not permitted", "Error");
                     return;
                 }
 
@@ -769,7 +769,7 @@ namespace MRDTools
 
                     package.Save();
                 }
-                Process.Start(filename);
+                ShellOpen.Open(filename);
             }
         }
 

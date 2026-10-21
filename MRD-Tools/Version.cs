@@ -15,7 +15,9 @@ namespace MRDTools
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elementSet)
         {
             Autodesk.Revit.ApplicationServices.Application app = commandData.Application.Application;
-            TaskDialog.Show("Version Control", "Version 2025.1.0");
+            // Read from the assembly so it follows <Version> in the csproj
+            System.Version version = typeof(Version).Assembly.GetName().Version;
+            TaskDialog.Show("Version Control", $"Version {version.ToString(3)}");
             return Result.Succeeded;
 
             //Version 2015.1.0 - Initial release
@@ -32,6 +34,9 @@ namespace MRDTools
             //Version 2023.1.0 - Updated to Revit 2023
             //Version 2024.1.0 - Updated to Revit 2024
             //Version 2025.1.0 - Updated to Revit 2025. framework updated to .net 8. EPPlus added as a git package
+            //Version 9.1.0 - One project for Revit 2024-2027 (net48 / net8 / net10). An interim build before 10.0.0.
+            //Fixes opening reports and Excel files on .NET 8+, swapped message box titles, relative repaths
+            //across drives or shares, and the batch summary reporting success when projects had failed
         }
     }
 }
