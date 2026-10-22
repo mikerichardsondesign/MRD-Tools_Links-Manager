@@ -28,11 +28,14 @@
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(MRDLinksForm));
             this.tblLayoutAll = new System.Windows.Forms.TableLayoutPanel();
             this.tblLayoutBtns = new System.Windows.Forms.TableLayoutPanel();
             this.btnMakeChanges = new System.Windows.Forms.Button();
             this.btnClose = new System.Windows.Forms.Button();
+            this.chkWriteAllLinks = new System.Windows.Forms.CheckBox();
+            this.toolTip = new System.Windows.Forms.ToolTip(this.components);
             this.chkTextPrint = new System.Windows.Forms.CheckBox();
             this.btnPrintTextOnly = new System.Windows.Forms.Button();
             this.btnExportExcel = new System.Windows.Forms.Button();
@@ -208,16 +211,17 @@
             // 
             // tblLayoutBtns
             // 
-            this.tblLayoutBtns.ColumnCount = 5;
+            this.tblLayoutBtns.ColumnCount = 6;
             this.tblLayoutBtns.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 203F));
             this.tblLayoutBtns.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 200F));
             this.tblLayoutBtns.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.tblLayoutBtns.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.AutoSize));
             this.tblLayoutBtns.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 100F));
             this.tblLayoutBtns.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 100F));
-            this.tblLayoutBtns.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 20F));
-            this.tblLayoutBtns.Controls.Add(this.btnMakeChanges, 3, 0);
-            this.tblLayoutBtns.Controls.Add(this.btnClose, 4, 0);
-            this.tblLayoutBtns.Controls.Add(this.chkTextPrint, 2, 0);
+            this.tblLayoutBtns.Controls.Add(this.btnMakeChanges, 4, 0);
+            this.tblLayoutBtns.Controls.Add(this.btnClose, 5, 0);
+            this.tblLayoutBtns.Controls.Add(this.chkWriteAllLinks, 2, 0);
+            this.tblLayoutBtns.Controls.Add(this.chkTextPrint, 3, 0);
             this.tblLayoutBtns.Controls.Add(this.btnPrintTextOnly, 0, 0);
             this.tblLayoutBtns.Controls.Add(this.btnExportExcel, 1, 0);
             this.tblLayoutBtns.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -264,7 +268,28 @@
             this.chkTextPrint.TabIndex = 2;
             this.chkTextPrint.Text = "Generate a Text File After Changes Have Been Made";
             this.chkTextPrint.UseVisualStyleBackColor = true;
-            // 
+            //
+            // chkWriteAllLinks
+            //
+            this.chkWriteAllLinks.AutoSize = true;
+            this.chkWriteAllLinks.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
+            this.chkWriteAllLinks.Checked = true;
+            this.chkWriteAllLinks.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.chkWriteAllLinks.Dock = System.Windows.Forms.DockStyle.Right;
+            this.chkWriteAllLinks.Enabled = false;
+            this.chkWriteAllLinks.Name = "chkWriteAllLinks";
+            this.chkWriteAllLinks.Padding = new System.Windows.Forms.Padding(0, 0, 10, 0);
+            this.chkWriteAllLinks.Size = new System.Drawing.Size(232, 26);
+            this.chkWriteAllLinks.TabIndex = 5;
+            this.chkWriteAllLinks.Text = "Write All Links, Not Just Changed Ones";
+            this.chkWriteAllLinks.UseVisualStyleBackColor = true;
+            //
+            // toolTip
+            //
+            this.toolTip.AutoPopDelay = 30000;
+            this.toolTip.InitialDelay = 500;
+            this.toolTip.ReshowDelay = 100;
+            //
             // btnPrintTextOnly
             // 
             this.btnPrintTextOnly.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -1622,6 +1647,8 @@
         private System.Windows.Forms.Button btnMakeChanges;
         private System.Windows.Forms.Button btnClose;
         private System.Windows.Forms.CheckBox chkTextPrint;
+        private System.Windows.Forms.CheckBox chkWriteAllLinks;
+        private System.Windows.Forms.ToolTip toolTip;
         private System.Windows.Forms.Button btnPrintTextOnly;
         private System.Windows.Forms.TabControl tabConMain;
         private System.Windows.Forms.TabPage tabRevitLinksDGV;

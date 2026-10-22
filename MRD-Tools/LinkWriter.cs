@@ -10,16 +10,19 @@ namespace MRDTools
     internal static class LinkWriter
     {
         /// <summary>
-        /// Writes the changed Revit, CAD and DWF links among the rows that belong to projectPath, and returns how many it wrote.
-        /// A project with no changed links isn't touched (0 is returned), so it isn't set to transmitted for nothing.
+        /// Writes the Revit, CAD and DWF links among the rows that belong to projectPath, and returns how many it wrote.
+        /// Only changed links are written, unless writeAll is set. With nothing to write the project isn't touched
+        /// (0 is returned), so it isn't set to transmitted for nothing.
+        /// writeAll is for a project that will be moved along with its linked files: the links that aren't written keep
+        /// their last saved data, and relative links among them may not be found from the new folder.
         /// Throws when the project can't be read or written, for example because it's open.
         /// </summary>
-        public static int Write(string projectPath, IEnumerable<LinkRow> rows)
+        public static int Write(string projectPath, IEnumerable<LinkRow> rows, bool writeAll)
         {
             Dictionary<string, LinkRow> changed = new Dictionary<string, LinkRow>();
             foreach (LinkRow row in rows)
             {
-                if (row.IsEditable && row.IsDirty && string.Equals(row.ProjectPath, projectPath, StringComparison.OrdinalIgnoreCase))
+                if (row.IsEditable && (writeAll || row.IsDirty) && string.Equals(row.ProjectPath, projectPath, StringComparison.OrdinalIgnoreCase))
                     changed[Key(row.Kind, row.RefId)] = row;
             }
             if (changed.Count == 0) return 0;

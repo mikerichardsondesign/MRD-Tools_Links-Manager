@@ -23,6 +23,9 @@ namespace MRDTools
 
         public bool HasChanges => All.Any(r => r.IsDirty);
 
+        /// <summary>Whether Make Changes has anything to write: changed links, or with writeAll any Revit, CAD or DWF link.</summary>
+        public bool HasLinksToWrite(bool writeAll) => All.Any(r => r.IsEditable && (writeAll || r.IsDirty));
+
         /// <summary>Every link as last saved, in the order the upper grids show them.</summary>
         public IEnumerable<LinkRow> SavedInGridOrder => RvtSaved.Concat(CadSaved).Concat(DwfSaved).Concat(Other);
 

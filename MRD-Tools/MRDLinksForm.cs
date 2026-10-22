@@ -25,6 +25,7 @@ namespace MRDTools
         {
             InitializeComponent();
             Icon = FormIcon.Load();
+            toolTip.SetToolTip(chkWriteAllLinks, LinkConstants.TipWriteAllLinks);
 
             btnBrowseFolderRevitDGV.Click += new EventHandler(btnBrowseFolderRevitDGV_Click);
             btnBrowseFolderDwf.Click += new EventHandler(btnBrowseFolderDwf_Click);
@@ -185,17 +186,18 @@ namespace MRDTools
                 return;
             }
 
-            // Only changed links are written, so a project with none isn't touched
-            if (!links.HasChanges)
+            // Only changed links are written, unless Write All Links is ticked, so a project with none isn't touched
+            bool writeAll = chkWriteAllLinks.Checked;
+            if (!links.HasLinksToWrite(writeAll))
             {
-                System.Windows.MessageBox.Show(LinkConstants.MsgNoChanges, "No Changes");
+                System.Windows.MessageBox.Show(writeAll ? LinkConstants.MsgNoLinksToWrite : LinkConstants.MsgNoChanges, "No Changes");
                 return;
             }
 
             int changed;
             try
             {
-                changed = LinkWriter.Write(projectPath, links.All);
+                changed = LinkWriter.Write(projectPath, links.All, writeAll);
             }
             catch (Exception ex)
             {
@@ -209,7 +211,9 @@ namespace MRDTools
                 return;
             }
 
-            string summary = $"Changes to {changed} link(s) have been applied and will take effect next time the project is opened";
+            string summary = writeAll
+                ? $"All {changed} link(s) have been written and will take effect next time the project is opened"
+                : $"Changes to {changed} link(s) have been applied and will take effect next time the project is opened";
             string outputfile = null;
             if (chkTextPrint.Checked)
             {
@@ -293,7 +297,7 @@ namespace MRDTools
                     btnBrowseFolderRevitDGV.Enabled = chkRevitFolder.Enabled = txtBrowseFolderRevit.Enabled = true;
                     btnBrowseFolderCad.Enabled = chkCadFolder.Enabled = txtBrowseFolderCad.Enabled = true;
                     btnBrowseFolderDwf.Enabled = chkDwfFolder.Enabled = txtBrowseFolderDwf.Enabled = true;
-                    cBoxAbsolutePaths.Enabled = btnMakeChanges.Enabled = chkTextPrint.Enabled = btnPrintTextOnly.Enabled = true;
+                    cBoxAbsolutePaths.Enabled = btnMakeChanges.Enabled = chkTextPrint.Enabled = chkWriteAllLinks.Enabled = btnPrintTextOnly.Enabled = true;
                     cBoxBasicChangesDWFLoad.Enabled = cBoxBasicChangesDWFUnload.Enabled = true;
                     cBoxBasicChangesCADLoad.Enabled = cBoxBasicChangesCADUnload.Enabled = true;
                     cBoxBasicChangesRevitLoad.Enabled = cBoxBasicChangesRevitUnload.Enabled = true;

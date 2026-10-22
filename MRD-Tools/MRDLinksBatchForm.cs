@@ -27,6 +27,7 @@ namespace MRDTools
         {
             InitializeComponent();
             Icon = FormIcon.Load();
+            toolTip.SetToolTip(chkWriteAllLinks, LinkConstants.TipWriteAllLinks);
 
             chkRevitFolder.CheckedChanged += new EventHandler(chkRevitFolder_CheckedChanged);
             chkCadFolder.CheckedChanged += new EventHandler(chkCadFolder_CheckedChanged);
@@ -306,7 +307,7 @@ namespace MRDTools
             btnUncheckRows.Enabled = false;
             btnCheckRows.Enabled = false;
             cBoxSearchSubdirectories.Enabled = false;
-            btnPrintTextOnly.Enabled = chkTextPrint.Enabled = btnMakeChanges.Enabled = true;
+            btnPrintTextOnly.Enabled = chkTextPrint.Enabled = chkWriteAllLinks.Enabled = btnMakeChanges.Enabled = true;
             cBoxBasicChangesRevitLoad.Enabled = cBoxBasicChangesRevitUnload.Enabled = true;
             cBoxBasicChangesCADLoad.Enabled = cBoxBasicChangesCADUnload.Enabled = true;
             cBoxBasicChangesDWFLoad.Enabled = cBoxBasicChangesDWFUnload.Enabled = true;
@@ -334,7 +335,7 @@ namespace MRDTools
 
             btnFixFileSelectionChoice.Enabled = true;
             btnClearFileSelectionChoice.Enabled = false;
-            btnPrintTextOnly.Enabled = chkTextPrint.Enabled = btnMakeChanges.Enabled = false;
+            btnPrintTextOnly.Enabled = chkTextPrint.Enabled = chkWriteAllLinks.Enabled = btnMakeChanges.Enabled = false;
 
             cBoxBasicChangesDWFLoad.Checked = cBoxBasicChangesDWFUnload.Checked = false;
             cBoxBasicChangesCADLoad.Checked = cBoxBasicChangesCADUnload.Checked = false;
@@ -375,10 +376,11 @@ namespace MRDTools
 
         private void btnMakeChanges_Click(object sender, EventArgs e)
         {
-            // Only changed links are written, so a project with none isn't touched
-            if (!links.HasChanges)
+            // Only changed links are written, unless Write All Links is ticked, so a project with none isn't touched
+            bool writeAll = chkWriteAllLinks.Checked;
+            if (!links.HasLinksToWrite(writeAll))
             {
-                System.Windows.MessageBox.Show(LinkConstants.MsgNoChanges, "No Changes");
+                System.Windows.MessageBox.Show(writeAll ? LinkConstants.MsgNoLinksToWrite : LinkConstants.MsgNoChanges, "No Changes");
                 return;
             }
 
@@ -392,7 +394,7 @@ namespace MRDTools
 
                 try
                 {
-                    if (LinkWriter.Write(f.FilePathName, links.All) > 0)
+                    if (LinkWriter.Write(f.FilePathName, links.All, writeAll) > 0)
                         amendedCount++;
                     else
                         unchangedCount++;
@@ -406,7 +408,9 @@ namespace MRDTools
             // One summary for the whole batch, so a failed project can't hide behind a success message
             string summary = $"Changes have been applied to {amendedCount} project(s) and will take effect next time each project is opened";
             if (unchangedCount > 0)
-                summary += $"\n\n{unchangedCount} project(s) had no changed links and were left as they were";
+                summary += writeAll
+                    ? $"\n\n{unchangedCount} project(s) had no Revit, CAD or DWF links and were left as they were"
+                    : $"\n\n{unchangedCount} project(s) had no changed links and were left as they were";
 
             string outputfile = null;
             if (chkTextPrint.Checked)
