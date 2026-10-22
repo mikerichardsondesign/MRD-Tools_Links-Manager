@@ -139,7 +139,7 @@
   <li>Click <b>Browse Folder</b> <span class="n">8</span> and pick a folder of Revit projects. Tick <b>Search Subdirectories</b> first to include the folders inside it, but expect a large folder tree to take a while.</li>
   <li>Choose the projects to process with the <b>To Process</b> checkboxes <span class="n">9</span>. Or use <b>Check All / No Files</b>, or select several rows and click <b>Check Selected Rows</b> or <b>Uncheck Selected Rows</b> <span class="n">11</span>.</li>
   <li>Click <b>Fix File Selection Choice</b> <span class="n">10</span>. The link lists fill with every chosen project's links, with a <b>Project Name</b> column to tell them apart.</li>
-  <li>Review and change the links, then click <b>Make Changes</b> <span class="n">6</span>. A summary lists any project that couldn't be changed.</li>
+  <li>Review and change the links, then click <b>Make Changes</b> <span class="n">6</span>. A summary says how many projects were changed and how many had nothing to change, and lists any that couldn't be changed.</li>
 </ol>
 <p>To start again with a different folder or selection, click <b>Clear File Selection Choice</b> <span class="n">12</span>.</p>
 
@@ -173,12 +173,12 @@
   <li>Click a link's <b>Browse</b> button in the <b>Repath</b> column <span class="n">4</span> to pick its new file.</li>
   <li>Select several rows and click <b>Repath Selected Rows</b> to point them all at one folder.</li>
   <li>To re-path every link on the tab to one folder, click <b>Browse Folder</b> <span class="n">5</span> in the lower bar, then tick the <b>Repath All … Links</b> checkbox. Clear it to undo.</li>
-  <li>Click <b>Reset Paths</b> <span class="n">15</span> to put the paths back as they were.</li>
+  <li>Click <b>Reset Paths</b> <span class="n">15</span> to put the paths back to what the project holds: as they were read, or as you last wrote them with <b>Make Changes</b>.</li>
 </ul>
 <p>Links whose path type is Relative are re-pathed with a relative path, unless you tick <b>Repath with Absolute Paths</b>. A link on a different drive or network share from the project always gets its full path, because no relative path exists.</p>
 <p>When you re-path a link, set it to Loaded as well, so Revit picks up the new file when the project opens.</p>
 <h3>Commit or close</h3>
-<p>Click <b>Make Changes</b> <span class="n">6</span> to write the changes. Tick the checkbox beside it to get a text file listing the result. <b>Close</b> <span class="n">7</span> leaves without saving anything you haven't committed.</p>
+<p>Click <b>Make Changes</b> <span class="n">6</span> to write the changes. Only the links you've changed are written, so a project with no changes is left exactly as it is. Tick the checkbox beside it to get a text file listing the result. <b>Close</b> <span class="n">7</span> leaves without saving anything you haven't committed.</p>
 
 <h2 id="reports">Reports</h2>
 <p><b>Generate Text File – Current Status</b> and <b>Export All Paths to Excel</b> <span class="n">2</span> list every link in the project, both as last saved and as it will be when the project next opens. You can run them before or after making changes; neither changes the project.</p>
@@ -210,7 +210,7 @@
 <h2 id="history">Version history</h2>
 <table>
   <tr><th>Version</th><th>Changes</th></tr>
-  <tr><td>9.1.0</td><td>One install covers Revit 2024–2027, from a new setup that needs no admin rights. The files Excel export needs are now included for Revit 2025 and 2026. Fixes opening the text report and Excel file on Revit 2025 and later, message box titles, relative re-pathing to another drive or network share, and the batch summary, which now lists any project that couldn't be changed.</td></tr>
+  <tr><td>9.1.0</td><td>One install covers Revit 2024–2027, from a new setup that needs no admin rights. The files Excel export needs are now included for Revit 2025 and 2026. Fixes opening the text report and Excel file on Revit 2025 and later, message box titles, relative re-pathing to another drive or network share, and the batch summary, which now lists any project that couldn't be changed. Make Changes writes only the links you've changed, and leaves a project with none untouched, so it isn't set to transmitted for nothing. Clearing <b>Is Loaded</b> on a link Revit couldn't find now unloads it, and a link's state updates as soon as its checkbox is clicked.</td></tr>
   <tr><td>9.0.0</td><td>Updated to work with Revit 2024</td></tr>
   <tr><td>8.0.0</td><td>Updated to work with Revit 2023</td></tr>
   <tr><td>7.0.0</td><td>Updated to work with Revit 2022</td></tr>

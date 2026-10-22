@@ -1,11 +1,6 @@
-using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using OfficeOpenXml;
-using OfficeOpenXml.Style;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Text;
 using System.Windows.Forms;
 
 
@@ -18,21 +13,7 @@ namespace MRDTools
     {
         #region Fields
 
-        SortableBindingList<LinkData> linkInfoListRvt = new SortableBindingList<LinkData>();
-        SortableBindingList<LinkData> linkInfoListRvtDesired = new SortableBindingList<LinkData>();
-        SortableBindingList<LinkData> linkInfoListCad = new SortableBindingList<LinkData>();
-        SortableBindingList<LinkData> linkInfoListCadDesired = new SortableBindingList<LinkData>();
-        SortableBindingList<LinkData> linkInfoListDwf = new SortableBindingList<LinkData>();
-        SortableBindingList<LinkData> linkInfoListDwfDesired = new SortableBindingList<LinkData>();
-        SortableBindingList<LinkData> linkInfoListOther = new SortableBindingList<LinkData>();
-
-        List<PersistantLinkData> perLinkInfoListRvtDesired = new List<PersistantLinkData>();
-        List<PersistantLinkData> perLinkInfoListCadDesired = new List<PersistantLinkData>();
-        List<PersistantLinkData> perLinkInfoListDwfDesired = new List<PersistantLinkData>();
-
-        List<PersistantLoadUnloadData> perLoadUnloadListRvtDesired = new List<PersistantLoadUnloadData>();
-        List<PersistantLoadUnloadData> perLoadUnloadListCadDesired = new List<PersistantLoadUnloadData>();
-        List<PersistantLoadUnloadData> perLoadUnloadListDwfDesired = new List<PersistantLoadUnloadData>();
+        readonly LinkGridLists links = new LinkGridLists();
 
         string currentOpenDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
 
@@ -57,23 +38,23 @@ namespace MRDTools
             cellGray.Style.BackColor = System.Drawing.Color.GhostWhite;
 
             // Read-only last-saved grids
-            DataGridViewHelper.ConfigureReadOnlyGrid(RvtDGV, cellGray, includeSavedTime: true, dataSource: linkInfoListRvt);
-            DataGridViewHelper.ConfigureReadOnlyGrid(CadDGV, cellGray, includeSavedTime: true, dataSource: linkInfoListCad);
-            DataGridViewHelper.ConfigureReadOnlyGrid(DwfDGV, cellGray, includeSavedTime: true, dataSource: linkInfoListDwf);
-            DataGridViewHelper.ConfigureReadOnlyGrid(OtherDGV, cellGray, includeSavedTime: false, dataSource: linkInfoListOther, linkPathWidth: 450);
+            DataGridViewHelper.ConfigureReadOnlyGrid(RvtDGV, cellGray, includeSavedTime: true, dataSource: links.RvtSaved);
+            DataGridViewHelper.ConfigureReadOnlyGrid(CadDGV, cellGray, includeSavedTime: true, dataSource: links.CadSaved);
+            DataGridViewHelper.ConfigureReadOnlyGrid(DwfDGV, cellGray, includeSavedTime: true, dataSource: links.DwfSaved);
+            DataGridViewHelper.ConfigureReadOnlyGrid(OtherDGV, cellGray, includeSavedTime: false, dataSource: links.Other, linkPathWidth: 450);
 
             // Editable desired-state grids
-            DataGridViewHelper.ConfigureDesiredGrid(RvtDesiredDGV, cellGray, linkInfoListRvtDesired,
-                BtnFileBrowseRvtDesired_CellClick, cBoxLinkStateRvtDesired_CellValueChanged, cBoxLinkStateRvtDesired_CellMouseUp);
-            DataGridViewHelper.ConfigureDesiredGrid(CadDesiredDGV, cellGray, linkInfoListCadDesired,
-                BtnFileBrowseCadDesired_CellClick, cBoxLinkStateCadDesired_CellValueChanged, cBoxLinkStateCadDesired_CellMouseUp);
-            DataGridViewHelper.ConfigureDesiredGrid(DwfDesiredDGV, cellGray, linkInfoListDwfDesired,
-                BtnFileBrowseDwfDesired_CellClick, cBoxLinkStateDwfDesired_CellValueChanged, cBoxLinkStateDwfDesired_CellMouseUp);
+            DataGridViewHelper.ConfigureDesiredGrid(RvtDesiredDGV, cellGray, links.RvtDesired, BtnFileBrowseRvtDesired_CellClick);
+            DataGridViewHelper.ConfigureDesiredGrid(CadDesiredDGV, cellGray, links.CadDesired, BtnFileBrowseCadDesired_CellClick);
+            DataGridViewHelper.ConfigureDesiredGrid(DwfDesiredDGV, cellGray, links.DwfDesired, BtnFileBrowseDwfDesired_CellClick);
         }
 
         #endregion
 
         #region Private Helpers
+
+        /// <summary>Repath with absolute paths, even for links whose path type is Relative.</summary>
+        private bool ForceAbsolute => cBoxAbsolutePaths.CheckState != CheckState.Unchecked;
 
         private void HandleFolderBrowseClick(System.Windows.Forms.TextBox targetTextBox)
         {
@@ -87,20 +68,6 @@ namespace MRDTools
             {
                 currentOpenDirectory = dlg.SelectedPath;
                 targetTextBox.Text = dlg.SelectedPath;
-            }
-        }
-
-        private void ApplyPathToLink(LinkData srd, string targetPath)
-        {
-            srd.RefName = Path.GetFileName(targetPath);
-            if (srd.RefPathType == LinkConstants.PathTypeRelative && cBoxAbsolutePaths.CheckState == CheckState.Unchecked)
-            {
-                try { srd.RefPath = GetRelativePath.GetRelativePathUriA(targetPath, srd.FilePath); }
-                catch (Exception) { srd.RefPath = targetPath; }
-            }
-            else
-            {
-                srd.RefPath = targetPath;
             }
         }
 
@@ -120,7 +87,7 @@ namespace MRDTools
                 {
                     using (dlg.OpenFile()) { }
                     currentOpenDirectory = Path.GetDirectoryName(dlg.FileName);
-                    ApplyPathToLink(dgv.Rows[e.RowIndex].DataBoundItem as LinkData, dlg.FileName);
+                    (dgv.Rows[e.RowIndex].DataBoundItem as LinkRow).Repath(dlg.FileName, ForceAbsolute);
                 }
                 catch (Exception ex)
                 {
@@ -129,44 +96,19 @@ namespace MRDTools
             }
         }
 
-        private void ApplyFolderToList(SortableBindingList<LinkData> list, List<PersistantLinkData> persistent,
-            string folder, bool isChecked)
+        private void ApplyFolderToList(SortableBindingList<LinkRow> list, string folder, bool isChecked)
         {
-            if (isChecked)
+            foreach (LinkRow row in list)
             {
-                foreach (LinkData ld in list)
-                {
-                    string targetPath = Path.Combine(folder, Path.GetFileName(ld.RefName));
-                    if (ld.RefPathType == LinkConstants.PathTypeRelative && cBoxAbsolutePaths.CheckState == CheckState.Unchecked)
-                    {
-                        try { ld.RefPath = GetRelativePath.GetRelativePathUriA(targetPath, ld.FilePath); }
-                        catch (Exception) { ld.RefPath = targetPath; }
-                    }
-                    else
-                    {
-                        ld.RefPath = targetPath;
-                    }
-                }
-            }
-            else
-            {
-                ResetPaths(list, persistent);
+                if (isChecked) row.RepathToFolder(folder, ForceAbsolute);
+                else row.ResetPath();
             }
         }
 
-        private void ResetPaths(SortableBindingList<LinkData> list, List<PersistantLinkData> persistent)
+        private void ResetPaths(SortableBindingList<LinkRow> list)
         {
-            foreach (LinkData ld in list)
-            {
-                foreach (PersistantLinkData pld in persistent)
-                {
-                    if (pld.RefStableId == ld.RefStableId)
-                    {
-                        ld.RefPath = pld.RefPath;
-                        ld.RefName = pld.RefName;
-                    }
-                }
-            }
+            foreach (LinkRow row in list)
+                row.ResetPath();
         }
 
         private void RepathSelectedRows(DataGridView dgv)
@@ -187,19 +129,7 @@ namespace MRDTools
             {
                 currentOpenDirectory = dlg.SelectedPath;
                 foreach (DataGridViewRow row in dgv.SelectedRows)
-                {
-                    LinkData srd = row.DataBoundItem as LinkData;
-                    string targetPath = Path.Combine(dlg.SelectedPath, Path.GetFileName(srd.RefName));
-                    if (srd.RefPathType == LinkConstants.PathTypeRelative && cBoxAbsolutePaths.CheckState == CheckState.Unchecked)
-                    {
-                        try { srd.RefPath = GetRelativePath.GetRelativePathUriA(targetPath, srd.FilePath); }
-                        catch (Exception) { srd.RefPath = targetPath; }
-                    }
-                    else
-                    {
-                        srd.RefPath = targetPath;
-                    }
-                }
+                    (row.DataBoundItem as LinkRow).RepathToFolder(dlg.SelectedPath, ForceAbsolute);
             }
         }
 
@@ -211,174 +141,28 @@ namespace MRDTools
                 return;
             }
             foreach (DataGridViewRow row in dgv.SelectedRows)
-            {
-                LinkData srd = row.DataBoundItem as LinkData;
-                srd.RefIsLoaded = loaded;
-                srd.RefLoadState = loaded ? LinkConstants.StateLoaded : LinkConstants.StateUnloaded;
-            }
+                (row.DataBoundItem as LinkRow).DesiredLoaded = loaded;
         }
 
-        private void HandleLoadUnloadCheckbox(bool setLoaded, SortableBindingList<LinkData> list,
-            List<PersistantLoadUnloadData> persistent, CheckBox oppositeBox, bool isChecked)
+        private void HandleLoadUnloadCheckbox(bool setLoaded, SortableBindingList<LinkRow> list, CheckBox oppositeBox, bool isChecked)
         {
             if (isChecked)
             {
                 oppositeBox.Checked = false;
                 oppositeBox.Enabled = false;
-                foreach (LinkData ld in list)
-                {
-                    ld.RefIsLoaded = setLoaded;
-                    ld.RefLoadState = setLoaded ? LinkConstants.StateLoaded : LinkConstants.StateUnloaded;
-                }
+                foreach (LinkRow row in list)
+                    row.DesiredLoaded = setLoaded;
             }
             else
             {
                 oppositeBox.Enabled = true;
-                foreach (LinkData ld in list)
-                {
-                    foreach (PersistantLoadUnloadData pld in persistent)
-                    {
-                        if (pld.RefStableId == ld.RefStableId)
-                        {
-                            ld.RefIsLoaded = pld.RefIsLoaded;
-                            ld.RefLoadState = pld.RefLoadState;
-                        }
-                    }
-                }
+                foreach (LinkRow row in list)
+                    row.ResetLoaded();
             }
         }
 
-        private void HandleCellValueChanged(DataGridView dgv, DataGridViewCellEventArgs e)
-        {
-            if (e.ColumnIndex == dgv.Columns["Link State CBox"].Index && e.RowIndex != -1)
-            {
-                string current = dgv.Rows[e.RowIndex].Cells["Link State"].Value.ToString();
-                dgv.Rows[e.RowIndex].Cells["Link State"].Value =
-                    current == LinkConstants.StateLoaded ? LinkConstants.StateUnloaded : LinkConstants.StateLoaded;
-            }
-        }
-
-        private void HandleCellMouseUp(DataGridView dgv, DataGridViewCellMouseEventArgs e)
-        {
-            if (e.ColumnIndex == dgv.Columns["Link State"].Index && e.RowIndex != -1)
-                dgv.EndEdit();
-        }
-
-        private void ApplyLinkChanges(TransmissionData transData, ElementId refId, ExternalFileReference extRef,
-            SortableBindingList<LinkData> desired, ExternalFileReferenceType type)
-        {
-            if (extRef.ExternalFileReferenceType != type) return;
-
-            string dataKey = extRef.GetReferencingId().ToString();
-            foreach (LinkData l in desired)
-            {
-                if (l.RefId == dataKey)
-                {
-                    bool loadState = l.RefLoadState == LinkConstants.StateLoaded || l.RefLoadState == LinkConstants.StateNotFound;
-                    transData.SetDesiredReferenceData(refId, new FilePath(l.RefPath), extRef.PathType, loadState);
-                }
-            }
-        }
-
-        private bool GetIsLoaded(string loadState)
-        {
-            return loadState == LinkConstants.StateNotFound || loadState == LinkConstants.StateLoaded;
-        }
-
-        private void AppendLinkSection(StringBuilder sb, string header, SortableBindingList<LinkData> list, bool includeSavedTime, bool includeFileName = false)
-        {
-            sb.AppendLine(header);
-            sb.Append(includeFileName ? "LINK ID\tLINK NAME\tLINK STATE\tLINK PATH" : "LINK ID\tLINK NAME\tLINK STATE\tLINK PATH");
-            if (includeSavedTime) sb.Append("\tDATE");
-            sb.AppendLine();
-
-            foreach (LinkData l in list)
-            {
-                sb.Append($"{l.RefId}\t{l.RefName}\t{l.RefLoadState}\t{l.RefPath}");
-                if (includeSavedTime) sb.Append($"\t{l.RefSavedTime}");
-                sb.AppendLine();
-            }
-            sb.AppendLine();
-        }
-
-        private string BuildLinkReport(bool prependNote)
-        {
-            var sb = new StringBuilder();
-            if (prependNote)
-            {
-                sb.AppendLine("PLEASE NOTE THAT THIS OUTPUT IS WHAT WILL BE TRUE IF CHANGES ARE COMMITED BY PRESSING THE 'MAKE CHANGES' BUTTON");
-                sb.AppendLine("IF CHANGES ARE NOT COMMITTED THEN THE STATUS OF LINKS WILL STAY AS THEY WERE");
-                sb.AppendLine();
-            }
-
-            AppendLinkSection(sb, "REVIT - LAST SAVED LINK STATUS", linkInfoListRvt, includeSavedTime: true);
-            AppendLinkSection(sb, "REVIT - CURRENT LINK STATUS WHICH WILL BE APPLIED UPON NEXT OPEN OF PROJECT", linkInfoListRvtDesired, includeSavedTime: false);
-            AppendLinkSection(sb, "CAD - LAST SAVED LINK STATUS", linkInfoListCad, includeSavedTime: true);
-            AppendLinkSection(sb, "CAD - CURRENT LINK STATUS WHICH WILL BE APPLIED UPON NEXT OPEN OF PROJECT", linkInfoListCadDesired, includeSavedTime: false);
-            AppendLinkSection(sb, "DWF - LAST SAVED LINK STATUS", linkInfoListDwf, includeSavedTime: true);
-            AppendLinkSection(sb, "DWF - CURRENT LINK STATUS WHICH WILL BE APPLIED UPON NEXT OPEN OF PROJECT", linkInfoListDwfDesired, includeSavedTime: false);
-            AppendLinkSection(sb, "OTHER LINKS - LAST SAVED LINK STATUS", linkInfoListOther, includeSavedTime: false);
-            return sb.ToString();
-        }
-
-        private int WriteLinksToSheet(ExcelWorksheet sheet, int row, params SortableBindingList<LinkData>[] lists)
-        {
-            foreach (var list in lists)
-            {
-                foreach (LinkData l in list)
-                {
-                    sheet.Cells[row, 1].Value = l.FileName;
-                    sheet.Cells[row, 2].Value = l.RefId;
-                    sheet.Cells[row, 3].Value = l.RefName;
-                    sheet.Cells[row, 4].Value = l.RefLoadState;
-                    sheet.Cells[row, 5].Value = l.RefPath;
-                    sheet.Cells[row, 6].Value = l.RefSavedTime;
-                    sheet.Cells[row, 7].Value = l.RefLinkType;
-                    sheet.Cells[row, 8].Value = l.RefStableId;
-                    sheet.Cells[row, 9].Value = l.FilePath;
-                    row++;
-                }
-            }
-            return row;
-        }
-
-        private void SetupExcelSheetHeaders(ExcelWorksheet sheet, string title)
-        {
-            sheet.Cells.Style.Font.Size = 10;
-            sheet.Cells.Style.HorizontalAlignment = ExcelHorizontalAlignment.Left;
-            sheet.Cells.Style.VerticalAlignment = ExcelVerticalAlignment.Center;
-
-            sheet.Column(1).Width = 37;
-            sheet.Column(2).Width = 15;
-            sheet.Column(3).Width = 37;
-            sheet.Column(4).Width = 15;
-            sheet.Column(5).Width = 50;
-            sheet.Column(6).Width = 20;
-            sheet.Column(7).Width = 20;
-            sheet.Column(8).Width = 37;
-            sheet.Column(9).Width = 50;
-
-            sheet.Cells["A1"].Style.Font.Bold = true;
-            sheet.Cells["A1"].Value = title;
-
-            string[] headers = { "Project Name", "Link Id", "Link Name", "Link State", "Link Path", "Date", "Link Type", "Link Stable Id", "Master File Path" };
-            for (int i = 0; i < headers.Length; i++)
-            {
-                sheet.Cells[2, i + 1].Style.Font.Bold = true;
-                sheet.Cells[2, i + 1].Value = headers[i];
-            }
-
-            sheet.Cells["A1:I1"].Merge = true;
-            sheet.Cells["A1:I1"].Style.Border.Top.Style = ExcelBorderStyle.Thick;
-            sheet.Cells["A1:I1"].Style.Border.Bottom.Style = ExcelBorderStyle.Thick;
-            sheet.Cells["A1:I1"].Style.Border.Left.Style = ExcelBorderStyle.Thick;
-            sheet.Cells["A1:I1"].Style.Border.Right.Style = ExcelBorderStyle.Thick;
-
-            sheet.Cells["A2:I2"].AutoFilter = true;
-            sheet.Column(8).Hidden = true;
-            sheet.Column(9).Hidden = true;
-            sheet.HeaderFooter.OddFooter.RightAlignedText = "Page &P of &N";
-        }
+        private string WriteReport(bool prependNote) =>
+            LinkReport.WriteTempFile(links.SavedInGridOrder, links.DesiredInGridOrder, prependNote, includeProjectName: false);
 
         #endregion
 
@@ -394,69 +178,54 @@ namespace MRDTools
 
         private void btnMakeChanges_Click(object sender, EventArgs e)
         {
-            bool generateTextFile = chkTextPrint.Checked;
-            string outputfile = "";
-
-            try
-            {
-                string filename = this.txtBrowseProject.Text;
-                ModelPath mpSecond = new FilePath(filename);
-                TransmissionData transData = TransmissionData.ReadTransmissionData(mpSecond);
-
-                if (transData != null)
-                {
-                    ICollection<ElementId> externalReferences = transData.GetAllExternalFileReferenceIds();
-
-                    try
-                    {
-                        foreach (ElementId refId in externalReferences)
-                        {
-                            ExternalFileReference extRef = transData.GetLastSavedReferenceData(refId);
-                            ApplyLinkChanges(transData, refId, extRef, linkInfoListRvtDesired, ExternalFileReferenceType.RevitLink);
-                            ApplyLinkChanges(transData, refId, extRef, linkInfoListCadDesired, ExternalFileReferenceType.CADLink);
-                            ApplyLinkChanges(transData, refId, extRef, linkInfoListDwfDesired, ExternalFileReferenceType.DWFMarkup);
-                        }
-
-                        transData.IsTransmitted = true;
-                        TransmissionData.WriteTransmissionData(mpSecond, transData);
-
-                        if (generateTextFile)
-                        {
-                            outputfile = Path.Combine(Path.GetTempPath(), "CurrentLinks.txt");
-                            using (StreamWriter sw = new StreamWriter(outputfile, false))
-                                sw.Write(BuildLinkReport(prependNote: false));
-                        }
-
-                        System.Windows.MessageBox.Show("Changes have been applied and will take effect next time the project is opened", "Links Amended");
-                        if (generateTextFile) ShellOpen.Open(outputfile);
-                    }
-                    catch (Exception)
-                    {
-                        System.Windows.MessageBox.Show(LinkConstants.MsgTransmissionFailed, "Error - Transmission Failed");
-                    }
-                }
-                else
-                {
-                    System.Windows.MessageBox.Show(LinkConstants.MsgNoLinks, "Error - Link Status");
-                }
-            }
-            catch (Exception)
+            string projectPath = this.txtBrowseProject.Text;
+            if (string.IsNullOrEmpty(projectPath))
             {
                 System.Windows.MessageBox.Show(LinkConstants.MsgOperationFailed, "Error - Operation Failed");
+                return;
             }
+
+            // Only changed links are written, so a project with none isn't touched
+            if (!links.HasChanges)
+            {
+                System.Windows.MessageBox.Show(LinkConstants.MsgNoChanges, "No Changes");
+                return;
+            }
+
+            int changed;
+            try
+            {
+                changed = LinkWriter.Write(projectPath, links.All);
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show(LinkConstants.MsgTransmissionFailed + "\n\n" + ex.Message, "Error - Transmission Failed");
+                return;
+            }
+
+            if (changed == 0)
+            {
+                System.Windows.MessageBox.Show(LinkConstants.MsgLinksNotFound, "No Changes");
+                return;
+            }
+
+            string summary = $"Changes to {changed} link(s) have been applied and will take effect next time the project is opened";
+            string outputfile = null;
+            if (chkTextPrint.Checked)
+            {
+                try { outputfile = WriteReport(prependNote: false); }
+                catch (Exception ex) { summary += "\n\nThe text file could not be written: " + ex.Message; }
+            }
+
+            System.Windows.MessageBox.Show(summary, "Links Amended");
+            if (outputfile != null) ShellOpen.Open(outputfile);
         }
 
         #endregion
 
         #region Print to Text
 
-        private void btnPrintTextOnly_Click(object sender, EventArgs e)
-        {
-            string outputfile = Path.Combine(Path.GetTempPath(), "CurrentLinks.txt");
-            using (StreamWriter sw = new StreamWriter(outputfile, false))
-                sw.Write(BuildLinkReport(prependNote: true));
-            ShellOpen.Open(outputfile);
-        }
+        private void btnPrintTextOnly_Click(object sender, EventArgs e) => ShellOpen.Open(WriteReport(prependNote: true));
 
         #endregion
 
@@ -473,29 +242,16 @@ namespace MRDTools
 
         #endregion
 
-        #region Checkbox Cell Events
-
-        private void cBoxLinkStateRvtDesired_CellValueChanged(object sender, DataGridViewCellEventArgs e) => HandleCellValueChanged(RvtDesiredDGV, e);
-        private void cBoxLinkStateRvtDesired_CellMouseUp(object sender, DataGridViewCellMouseEventArgs e) => HandleCellMouseUp(RvtDesiredDGV, e);
-
-        private void cBoxLinkStateCadDesired_CellValueChanged(object sender, DataGridViewCellEventArgs e) => HandleCellValueChanged(CadDesiredDGV, e);
-        private void cBoxLinkStateCadDesired_CellMouseUp(object sender, DataGridViewCellMouseEventArgs e) => HandleCellMouseUp(CadDesiredDGV, e);
-
-        private void cBoxLinkStateDwfDesired_CellValueChanged(object sender, DataGridViewCellEventArgs e) => HandleCellValueChanged(DwfDesiredDGV, e);
-        private void cBoxLinkStateDwfDesired_CellMouseUp(object sender, DataGridViewCellMouseEventArgs e) => HandleCellMouseUp(DwfDesiredDGV, e);
-
-        #endregion
-
         #region Folder Apply Checkboxes
 
         private void chkRevitFolder_CheckedChanged(object sender, EventArgs e) =>
-            ApplyFolderToList(linkInfoListRvtDesired, perLinkInfoListRvtDesired, txtBrowseFolderRevit.Text, chkRevitFolder.Checked);
+            ApplyFolderToList(links.RvtDesired, txtBrowseFolderRevit.Text, chkRevitFolder.Checked);
 
         private void chkCadFolder_CheckedChanged(object sender, EventArgs e) =>
-            ApplyFolderToList(linkInfoListCadDesired, perLinkInfoListCadDesired, txtBrowseFolderCad.Text, chkCadFolder.Checked);
+            ApplyFolderToList(links.CadDesired, txtBrowseFolderCad.Text, chkCadFolder.Checked);
 
         private void chkDwfFolder_CheckedChanged(object sender, EventArgs e) =>
-            ApplyFolderToList(linkInfoListDwfDesired, perLinkInfoListDwfDesired, txtBrowseFolderDwf.Text, chkDwfFolder.Checked);
+            ApplyFolderToList(links.DwfDesired, txtBrowseFolderDwf.Text, chkDwfFolder.Checked);
 
         #endregion
 
@@ -522,172 +278,11 @@ namespace MRDTools
                     using (dlg.OpenFile()) { }
 
                     string filename = dlg.FileName;
-                    string projectFilePath = filename;
-                    string projectFileName = Path.GetFileName(filename);
                     currentOpenDirectory = Path.GetDirectoryName(filename);
                     this.txtBrowseProject.Text = filename;
 
-                    // Clear all lists
-                    linkInfoListRvt.Clear(); linkInfoListRvtDesired.Clear();
-                    linkInfoListCad.Clear(); linkInfoListCadDesired.Clear();
-                    linkInfoListDwf.Clear(); linkInfoListDwfDesired.Clear();
-                    linkInfoListOther.Clear();
-                    perLinkInfoListRvtDesired.Clear(); perLinkInfoListCadDesired.Clear(); perLinkInfoListDwfDesired.Clear();
-                    perLoadUnloadListRvtDesired.Clear(); perLoadUnloadListCadDesired.Clear(); perLoadUnloadListDwfDesired.Clear();
-
-                    ModelPath mp = new FilePath(filename);
-                    TransmissionData transData = TransmissionData.ReadTransmissionData(mp);
-
-                    if (transData != null)
-                    {
-                        ICollection<ElementId> externalReferences = transData.GetAllExternalFileReferenceIds();
-
-                        foreach (ElementId refId in externalReferences)
-                        {
-                            ExternalFileReference extRef = transData.GetLastSavedReferenceData(refId);
-                            ExternalFileReference extRefDesired = transData.GetDesiredReferenceData(refId);
-
-                            #region Sort Revit Data
-
-                            if (extRef.ExternalFileReferenceType == ExternalFileReferenceType.RevitLink)
-                            {
-                                string refPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(extRef.GetPath());
-                                string refLoadState = extRef.GetLinkedFileStatus().ToString();
-                                string refName = Path.GetFileName(refPath);
-                                bool checkIfcExt = GetExtension.IfcRvtExtension(refName);
-
-                                if (!checkIfcExt)
-                                {
-                                    string dataKey = extRef.GetReferencingId().ToString();
-                                    string refPathAbsolute = GetAbsolutePath.LinksAbsolutePath(refPath, filename);
-                                    string refStableId = projectFileName + dataKey;
-                                    bool refIsLoaded = GetIsLoaded(refLoadState);
-
-                                    linkInfoListRvt.Add(new LinkData(dataKey, refName, extRef.PathType.ToString(),
-                                        refLoadState, refIsLoaded, refPath,
-                                        GetLastSavedDate.LinksLastSavedDate(refPathAbsolute),
-                                        projectFilePath, projectFileName, refStableId, "Rvt"));
-                                }
-                            }
-
-                            if (extRefDesired.ExternalFileReferenceType == ExternalFileReferenceType.RevitLink)
-                            {
-                                string refPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(extRefDesired.GetPath());
-                                string refLoadState = extRefDesired.GetLinkedFileStatus().ToString();
-                                string refName = Path.GetFileName(refPath);
-                                bool checkIfcExt = GetExtension.IfcRvtExtension(refName);
-
-                                if (!checkIfcExt)
-                                {
-                                    string dataKey = extRefDesired.GetReferencingId().ToString();
-                                    string refStableId = projectFileName + dataKey;
-                                    bool refIsLoaded = GetIsLoaded(refLoadState);
-
-                                    linkInfoListRvtDesired.Add(new LinkData(dataKey, refName, extRefDesired.PathType.ToString(),
-                                        refLoadState, refIsLoaded, refPath, "N/A",
-                                        projectFilePath, projectFileName, refStableId, "Rvt"));
-                                    perLinkInfoListRvtDesired.Add(new PersistantLinkData(dataKey, refName, refPath, refStableId));
-                                    perLoadUnloadListRvtDesired.Add(new PersistantLoadUnloadData(dataKey, refLoadState, refIsLoaded, refStableId));
-                                }
-                            }
-
-                            #endregion
-
-                            #region Sort Cad Data
-
-                            if (extRef.ExternalFileReferenceType == ExternalFileReferenceType.CADLink)
-                            {
-                                string refPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(extRef.GetPath());
-                                string refLoadState = extRef.GetLinkedFileStatus().ToString();
-                                string refName = Path.GetFileName(refPath);
-                                string dataKey = extRef.GetReferencingId().ToString();
-                                string refPathAbsolute = GetAbsolutePath.LinksAbsolutePath(refPath, filename);
-                                string refStableId = projectFileName + dataKey;
-                                bool refIsLoaded = GetIsLoaded(refLoadState);
-
-                                linkInfoListCad.Add(new LinkData(dataKey, refName, extRef.PathType.ToString(),
-                                    refLoadState, refIsLoaded, refPath,
-                                    GetLastSavedDate.LinksLastSavedDate(refPathAbsolute),
-                                    projectFilePath, projectFileName, refStableId, "Dwg"));
-                            }
-
-                            if (extRefDesired.ExternalFileReferenceType == ExternalFileReferenceType.CADLink)
-                            {
-                                string refPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(extRefDesired.GetPath());
-                                string refLoadState = extRefDesired.GetLinkedFileStatus().ToString();
-                                string refName = Path.GetFileName(refPath);
-                                string dataKey = extRefDesired.GetReferencingId().ToString();
-                                string refStableId = projectFileName + dataKey;
-                                bool refIsLoaded = GetIsLoaded(refLoadState);
-
-                                linkInfoListCadDesired.Add(new LinkData(dataKey, refName, extRefDesired.PathType.ToString(),
-                                    refLoadState, refIsLoaded, refPath, "N/A",
-                                    projectFilePath, projectFileName, refStableId, "Dwg"));
-                                perLinkInfoListCadDesired.Add(new PersistantLinkData(dataKey, refName, refPath, refStableId));
-                                perLoadUnloadListCadDesired.Add(new PersistantLoadUnloadData(dataKey, refLoadState, refIsLoaded, refStableId));
-                            }
-
-                            #endregion
-
-                            #region Sort Dwf Data
-
-                            if (extRef.ExternalFileReferenceType == ExternalFileReferenceType.DWFMarkup)
-                            {
-                                string refPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(extRef.GetPath());
-                                string refLoadState = extRef.GetLinkedFileStatus().ToString();
-                                string refName = Path.GetFileName(refPath);
-                                string dataKey = extRef.GetReferencingId().ToString();
-                                string refPathAbsolute = GetAbsolutePath.LinksAbsolutePath(refPath, filename);
-                                string refStableId = projectFileName + dataKey;
-                                bool refIsLoaded = GetIsLoaded(refLoadState);
-
-                                linkInfoListDwf.Add(new LinkData(dataKey, refName, extRef.PathType.ToString(),
-                                    refLoadState, refIsLoaded, refPath,
-                                    GetLastSavedDate.LinksLastSavedDate(refPathAbsolute),
-                                    projectFilePath, projectFileName, refStableId, "Dwf"));
-                            }
-
-                            if (extRefDesired.ExternalFileReferenceType == ExternalFileReferenceType.DWFMarkup)
-                            {
-                                string refPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(extRefDesired.GetPath());
-                                string refLoadState = extRefDesired.GetLinkedFileStatus().ToString();
-                                string refName = Path.GetFileName(refPath);
-                                string dataKey = extRefDesired.GetReferencingId().ToString();
-                                string refStableId = projectFileName + dataKey;
-                                bool refIsLoaded = GetIsLoaded(refLoadState);
-
-                                linkInfoListDwfDesired.Add(new LinkData(dataKey, refName, extRefDesired.PathType.ToString(),
-                                    refLoadState, refIsLoaded, refPath, "N/A",
-                                    projectFilePath, projectFileName, refStableId, "Dwf"));
-                                perLinkInfoListDwfDesired.Add(new PersistantLinkData(dataKey, refName, refPath, refStableId));
-                                perLoadUnloadListDwfDesired.Add(new PersistantLoadUnloadData(dataKey, refLoadState, refIsLoaded, refStableId));
-                            }
-
-                            #endregion
-
-                            #region Sort Other Data
-
-                            if (extRef.ExternalFileReferenceType != ExternalFileReferenceType.DWFMarkup &
-                                extRef.ExternalFileReferenceType != ExternalFileReferenceType.CADLink &
-                                extRef.ExternalFileReferenceType != ExternalFileReferenceType.RevitLink)
-                            {
-                                string refPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(extRef.GetPath());
-                                string refLoadState = extRef.GetLinkedFileStatus().ToString();
-                                string refName = Path.GetFileName(refPath);
-                                string dataKey = extRef.GetReferencingId().ToString();
-                                string refStableId = projectFileName + dataKey;
-                                bool refIsLoaded = GetIsLoaded(refLoadState);
-
-                                linkInfoListOther.Add(new LinkData(dataKey, refName, extRef.PathType.ToString(),
-                                    refLoadState, refIsLoaded, refPath, "N/A",
-                                    projectFilePath, projectFileName, refStableId, "Other"));
-                            }
-
-                            #endregion
-                        }
-
-                        transData.IsTransmitted = false;
-                    }
+                    links.Clear();
+                    links.Add(LinkScanner.Scan(filename));
 
                     // Enable controls after successful load
                     btnExportExcel.Enabled = true;
@@ -719,22 +314,22 @@ namespace MRDTools
         #region Load / Unload All Checkboxes
 
         private void cBoxBasicChangesRevitUnload_CheckedChanged(object sender, EventArgs e) =>
-            HandleLoadUnloadCheckbox(setLoaded: false, linkInfoListRvtDesired, perLoadUnloadListRvtDesired, cBoxBasicChangesRevitLoad, cBoxBasicChangesRevitUnload.Checked);
+            HandleLoadUnloadCheckbox(setLoaded: false, links.RvtDesired, cBoxBasicChangesRevitLoad, cBoxBasicChangesRevitUnload.Checked);
 
         private void cBoxBasicChangesRevitLoad_CheckedChanged(object sender, EventArgs e) =>
-            HandleLoadUnloadCheckbox(setLoaded: true, linkInfoListRvtDesired, perLoadUnloadListRvtDesired, cBoxBasicChangesRevitUnload, cBoxBasicChangesRevitLoad.Checked);
+            HandleLoadUnloadCheckbox(setLoaded: true, links.RvtDesired, cBoxBasicChangesRevitUnload, cBoxBasicChangesRevitLoad.Checked);
 
         private void cBoxBasicChangesCADUnload_CheckedChanged(object sender, EventArgs e) =>
-            HandleLoadUnloadCheckbox(setLoaded: false, linkInfoListCadDesired, perLoadUnloadListCadDesired, cBoxBasicChangesCADLoad, cBoxBasicChangesCADUnload.Checked);
+            HandleLoadUnloadCheckbox(setLoaded: false, links.CadDesired, cBoxBasicChangesCADLoad, cBoxBasicChangesCADUnload.Checked);
 
         private void cBoxBasicChangesCADLoad_CheckedChanged(object sender, EventArgs e) =>
-            HandleLoadUnloadCheckbox(setLoaded: true, linkInfoListCadDesired, perLoadUnloadListCadDesired, cBoxBasicChangesCADUnload, cBoxBasicChangesCADLoad.Checked);
+            HandleLoadUnloadCheckbox(setLoaded: true, links.CadDesired, cBoxBasicChangesCADUnload, cBoxBasicChangesCADLoad.Checked);
 
         private void cBoxBasicChangesDWFUnload_CheckedChanged(object sender, EventArgs e) =>
-            HandleLoadUnloadCheckbox(setLoaded: false, linkInfoListDwfDesired, perLoadUnloadListDwfDesired, cBoxBasicChangesDWFLoad, cBoxBasicChangesDWFUnload.Checked);
+            HandleLoadUnloadCheckbox(setLoaded: false, links.DwfDesired, cBoxBasicChangesDWFLoad, cBoxBasicChangesDWFUnload.Checked);
 
         private void cBoxBasicChangesDWFLoad_CheckedChanged(object sender, EventArgs e) =>
-            HandleLoadUnloadCheckbox(setLoaded: true, linkInfoListDwfDesired, perLoadUnloadListDwfDesired, cBoxBasicChangesDWFUnload, cBoxBasicChangesDWFLoad.Checked);
+            HandleLoadUnloadCheckbox(setLoaded: true, links.DwfDesired, cBoxBasicChangesDWFUnload, cBoxBasicChangesDWFLoad.Checked);
 
         #endregion
 
@@ -757,18 +352,7 @@ namespace MRDTools
                     return;
                 }
 
-                using (ExcelPackage package = new ExcelPackage(new FileInfo(filename)))
-                {
-                    ExcelWorksheet sheet = package.Workbook.Worksheets.Add("Proposed Link Status");
-                    SetupExcelSheetHeaders(sheet, "Proposed Link Data Properties");
-                    WriteLinksToSheet(sheet, 3, linkInfoListRvtDesired, linkInfoListCadDesired, linkInfoListDwfDesired, linkInfoListOther);
-
-                    ExcelWorksheet sheetA = package.Workbook.Worksheets.Add("Current Link Status");
-                    SetupExcelSheetHeaders(sheetA, "Current Link Data Properties");
-                    WriteLinksToSheet(sheetA, 3, linkInfoListRvt, linkInfoListCad, linkInfoListDwf, linkInfoListOther);
-
-                    package.Save();
-                }
+                LinkWorkbook.Save(filename, links.SavedInGridOrder, links.DesiredInGridOrder);
                 ShellOpen.Open(filename);
             }
         }
@@ -785,9 +369,9 @@ namespace MRDTools
 
         #region Reset Paths
 
-        private void btnResetPathsRevit_Click(object sender, EventArgs e) => ResetPaths(linkInfoListRvtDesired, perLinkInfoListRvtDesired);
-        private void btnResetPathsCad_Click(object sender, EventArgs e) => ResetPaths(linkInfoListCadDesired, perLinkInfoListCadDesired);
-        private void btnResetPathsDwf_Click(object sender, EventArgs e) => ResetPaths(linkInfoListDwfDesired, perLinkInfoListDwfDesired);
+        private void btnResetPathsRevit_Click(object sender, EventArgs e) => ResetPaths(links.RvtDesired);
+        private void btnResetPathsCad_Click(object sender, EventArgs e) => ResetPaths(links.CadDesired);
+        private void btnResetPathsDwf_Click(object sender, EventArgs e) => ResetPaths(links.DwfDesired);
 
         #endregion
 
