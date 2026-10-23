@@ -43,35 +43,22 @@ namespace MRDTools
 
             RibbonPanel panelMRDE = application.CreateRibbonPanel("MRD Tools");
 
-            //create pull down button data
-            PulldownButtonData pullBtnDataLinksManNotOpen = new PulldownButtonData("LinksManager", " Links Manager ");
-
-            //create contextual help
-            ContextualHelp contextHelp = new ContextualHelp(ContextualHelpType.Url, helpHtml);
+            //one button opens the links manager, for one project or many
+            PushButtonData btnDataLinksManNotOpen = new PushButtonData("LinksManager", " Links Manager ", addInPath, "MRDTools.MRDLinksManager");
 
             //for ribbon
-            pullBtnDataLinksManNotOpen.LargeImage = new BitmapImage(new Uri(Path.Combine(AddInDirectory, "MRD-Links-32x32.png"), UriKind.Absolute));
+            btnDataLinksManNotOpen.LargeImage = new BitmapImage(new Uri(Path.Combine(AddInDirectory, "MRD-Links-32x32.png"), UriKind.Absolute));
 
             //for quick access if necessary
-            pullBtnDataLinksManNotOpen.Image = new BitmapImage(new Uri(Path.Combine(AddInDirectory, "MRD-Links-16x16.png"), UriKind.Absolute));
+            btnDataLinksManNotOpen.Image = new BitmapImage(new Uri(Path.Combine(AddInDirectory, "MRD-Links-16x16.png"), UriKind.Absolute));
 
-            //create pull down button
-            PulldownButton pullBtnLinksManNotOpen = panelMRDE.AddItem(pullBtnDataLinksManNotOpen) as PulldownButton;
+            PushButton btnLinksManNotOpen = panelMRDE.AddItem(btnDataLinksManNotOpen) as PushButton;
 
             //help stuff
-            pullBtnLinksManNotOpen.ToolTip = "Manage Links Outside of Projects";
-            pullBtnLinksManNotOpen.LongDescription = "Use this Links Manager Tool to Review, Repath, Load and Unload Links in a Revit Project Without Having to Open the Project";          
-            pullBtnLinksManNotOpen.SetContextualHelp(contextHelp);
-
-            //standard tool
-            PushButton btnLinksManNotOpenStandard = pullBtnLinksManNotOpen.AddPushButton(new PushButtonData("LinksManagerStandard", " Links Manager ", addInPath, "MRDTools.MRDLinksManager"));
-            btnLinksManNotOpenStandard.ToolTip = "Use this Links Manager Tool to Review, Repath, Load and Unload Links in a Revit Project Without Having to Open the Project";
-            btnLinksManNotOpenStandard.AvailabilityClassName = "MRDTools.AvailabilityTrueAlways";
-
-            //batch tool
-            PushButton btnLinksManNotOpenBatch = pullBtnLinksManNotOpen.AddPushButton(new PushButtonData("ElementsUpdateExcel", " Links Manager Batch", addInPath, "MRDTools.MRDLinksManagerBatch"));
-            btnLinksManNotOpenBatch.ToolTip = "Use this Links Manager Tool to Batch Repath, Load and Unload Links in Revit Projects Without Having to Open them";
-            btnLinksManNotOpenBatch.AvailabilityClassName = "MRDTools.AvailabilityTrueAlways";
+            btnLinksManNotOpen.ToolTip = "Manage Links Outside of Projects";
+            btnLinksManNotOpen.LongDescription = "Review, Repath, Load and Unload the Links of One or More Revit Projects Without Having to Open Them";
+            btnLinksManNotOpen.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, helpHtml));
+            btnLinksManNotOpen.AvailabilityClassName = "MRDTools.AvailabilityTrueAlways";
 
 
             //Ribbon end - return result succeeded////////////////////////////////////////////////////////////

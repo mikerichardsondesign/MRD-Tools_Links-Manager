@@ -4,7 +4,6 @@
     <AssemblyName>MRD-Tools</AssemblyName>
     <RootNamespace>MRDTools</RootNamespace>
     <OutputType>Library</OutputType>
-    <UseWindowsForms>true</UseWindowsForms>
     <UseWPF>true</UseWPF>
     <PlatformTarget>x64</PlatformTarget>
     <LangVersion>latest</LangVersion>

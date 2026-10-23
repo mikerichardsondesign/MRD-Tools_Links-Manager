@@ -93,8 +93,7 @@
   <div class="wrap">
     <a href="#overview">Overview</a>
     <a href="#start">Getting started</a>
-    <a href="#single">One project</a>
-    <a href="#batch">Batch</a>
+    <a href="#projects">Projects</a>
     <a href="#reading">Reading the links</a>
     <a href="#changes">Making changes</a>
     <a href="#reports">Reports</a>
@@ -108,83 +107,92 @@
 <main class="wrap">
 
 <h2 id="overview">Overview</h2>
-<p>External Access Links Manager shows the links in a Revit project file without opening it. Pick a project, or a folder of projects, and it lists every Revit, CAD, DWF and other link with its path, path type and load state.</p>
-<p>From there you can re-path links, one at a time, several at once or all of a type to one folder, and set each to load or unload. The changes are written into the project file and take effect the next time it is opened. You can also save a text or Excel report of every link, with or without making changes.</p>
+<p>External Access Links Manager shows the links in Revit project files without opening them. Add one project, several, or a folder of them, and it lists every Revit, CAD, DWF and other link with its path, path type and load state.</p>
+<p>From there you can re-path links, one at a time, several at once or all of a type to one folder, and set each to load or unload. The changes are written into the project files and take effect the next time each is opened. You can also save a text or Excel report of every link, with or without making changes.</p>
 
 <h2 id="start">Getting started</h2>
 <ol>
   <li>Open Revit. No project needs to be open.</li>
-  <li>On the <b>Add-Ins</b> tab, find the <b>MRD Tools</b> panel and open the <b>Links Manager</b> drop-down.</li>
-  <li>Choose <b>Links Manager</b> to work on one project, or <b>Links Manager Batch</b> to work on every project in a folder.</li>
+  <li>On the <b>Add-Ins</b> tab, find the <b>MRD Tools</b> panel and click <b>Links Manager</b>.</li>
+  <li>Add the projects to work on, as described under <a href="#projects">Projects</a>. Their links are read straight away.</li>
+  <li>Review and change the links, then click <b>MAKE CHANGES</b>.</li>
 </ol>
-
-<h2 id="single">Links Manager: one project</h2>
 <figure>
-  <img src="Resources/links-manager.jpg" alt="The Links Manager window, with numbered callouts">
-  <figcaption>Links Manager. The numbers match the steps on this page.</figcaption>
+  <img src="Resources/links-manager.png" alt="The Links Manager window, with three projects listed and their Revit links below">
+  <figcaption>Three projects added. One couldn't be read, so it isn't processed. The Revit tab shows two changed links, highlighted in amber.</figcaption>
 </figure>
-<ol>
-  <li>Click <b>Browse Project</b> <span class="n">1</span> and pick a Revit project (<code>.rvt</code>). The window fills with that project's links.</li>
-  <li>Review and change the links, as described under <a href="#reading">Reading the links</a> and <a href="#changes">Making changes</a>.</li>
-  <li>Click <b>Make Changes</b> <span class="n">6</span> to write the changes into the project.</li>
-</ol>
-<p>To look at another project, click <b>Browse Project</b> again. The new project's links replace the current ones.</p>
 
-<h2 id="batch">Links Manager Batch: a folder of projects</h2>
-<figure>
-  <img src="Resources/links-manager-batch.jpg" alt="The Batch Links Manager window, with numbered callouts">
-  <figcaption>Links Manager Batch. The numbers match the steps on this page.</figcaption>
-</figure>
-<ol>
-  <li>Click <b>Browse Folder</b> <span class="n">8</span> and pick a folder of Revit projects. Tick <b>Search Subdirectories</b> first to include the folders inside it, but expect a large folder tree to take a while.</li>
-  <li>Choose the projects to process with the <b>To Process</b> checkboxes <span class="n">9</span>. Or use <b>Check All / No Files</b>, or select several rows and click <b>Check Selected Rows</b> or <b>Uncheck Selected Rows</b> <span class="n">11</span>.</li>
-  <li>Click <b>Fix File Selection Choice</b> <span class="n">10</span>. The link lists fill with every chosen project's links, with a <b>Project Name</b> column to tell them apart.</li>
-  <li>Review and change the links, then click <b>Make Changes</b> <span class="n">6</span>. A summary says how many projects were changed and how many had nothing to change, and lists any that couldn't be changed.</li>
-</ol>
-<p>To start again with a different folder or selection, click <b>Clear File Selection Choice</b> <span class="n">12</span>.</p>
-
-<h2 id="reading">Reading the links</h2>
-<p>The links are split across four tabs: <b>Revit</b>, <b>CAD</b>, <b>DWF</b> and <b>Other</b>. Other holds things such as keynote and classification files. The Revit, CAD and DWF tabs each have two lists:</p>
+<h2 id="projects">Projects</h2>
 <ul>
-  <li><b>Last saved link status</b> (upper): the links as they were when the project was last saved.</li>
-  <li><b>Current status which will be applied upon next open of project</b> (lower): what the links will be the next time the project opens. This is the list you change.</li>
+  <li><b>ADD FILES</b> picks one or more Revit projects (<code>.rvt</code>).</li>
+  <li><b>ADD FOLDER</b> adds every project in a folder. Tick <b>Include subfolders</b> first to include the folders inside it, but expect a large folder tree to take a while. Backup files such as <code>name.0001.rvt</code> are left out.</li>
+  <li>You can also drop <code>.rvt</code> files or folders onto the window.</li>
+  <li><b>REMOVE</b> takes the selected projects, and their links, off the list.</li>
 </ul>
+<p>Each project's links are read as it's added. A project that's already in the list isn't added again.</p>
 <table>
   <tr><th>Column</th><th>Shows</th></tr>
-  <tr><td>Project Name</td><td>The project the link belongs to (batch tool only)</td></tr>
-  <tr><td>Link Id</td><td>The link's Revit element ID</td></tr>
-  <tr><td>Link Name</td><td>The linked file's name</td></tr>
-  <tr><td>Path Type</td><td>Relative or Absolute</td></tr>
-  <tr><td>Link State</td><td>Loaded, Unloaded or NotFound</td></tr>
-  <tr><td>Link Path</td><td>The path to the linked file, including its name. For a Relative link it's relative to the project, as in Revit's Manage Links; otherwise it's the full path</td></tr>
-  <tr><td>Last Saved</td><td>When the linked file was last saved, or "Date Not Found" if it can't be found (upper list)</td></tr>
+  <tr><td>Process</td><td>Whether the project's links are shown below and written by <b>MAKE CHANGES</b>. Clear it to set a project aside without removing it.</td></tr>
+  <tr><td>Project, Folder</td><td>The project file and the folder it's in</td></tr>
+  <tr><td>Last Saved</td><td>When the project file was last saved</td></tr>
+  <tr><td>Links</td><td>How many links it has</td></tr>
+  <tr><td>Changes</td><td>How many of its links you've changed and not yet written</td></tr>
+  <tr><td>Status</td><td>Whether its links were read, or why not, and after <b>MAKE CHANGES</b>, what was written. A project with <b>Process</b> cleared shows "Not processed". One that couldn't be read is marked with a warning and isn't processed.</td></tr>
 </table>
+<p>With one project in the list, the window works as the single-project tool did, and the links list drops its <b>Project</b> column.</p>
+
+<h2 id="reading">Reading the links</h2>
+<p>The links are split across four tabs, <b>Revit</b>, <b>CAD</b>, <b>DWF</b> and <b>Other</b>, each with a count. Other holds things such as keynote tables, and its links are shown but can't be changed. Each tab has one list, with a row for every link of the projects ticked to <b>Process</b>.</p>
+<table>
+  <tr><th>Column</th><th>Shows</th></tr>
+  <tr><td>Project</td><td>The project the link belongs to (only with more than one project)</td></tr>
+  <tr><td>Link Name</td><td>The linked file's name</td></tr>
+  <tr><td>Path Type</td><td>Relative or Absolute, chosen from a list as in Revit's Manage Links (see <a href="#pathtype">Relative or absolute</a>)</td></tr>
+  <tr><td>Loaded</td><td>Whether Revit will load the link the next time the project opens</td></tr>
+  <tr><td>State</td><td>Loaded, Unloaded or NotFound (in red: Revit couldn't find the file when the project was last saved)</td></tr>
+  <tr><td>Path on Next Open</td><td>The path Revit will use the next time the project opens. This is the one you change.</td></tr>
+  <tr><td>Last Saved Path</td><td>The path when the project was last saved. For a Relative link it's relative to the project, as in Revit's Manage Links; otherwise it's the full path.</td></tr>
+  <tr><td>File Date</td><td>When the linked file was last saved, or "Date Not Found" if it can't be found</td></tr>
+</table>
+<p>A link you've changed gets an amber row with a bar at its left edge, and a changed path is shown in bold. Click a column heading to sort by it. Hover over a path to see all of it.</p>
 
 <h2 id="changes">Making changes</h2>
-<p>All changes are made in the lower list, and nothing is written to the project until you click <b>Make Changes</b> <span class="n">6</span>.</p>
+<p>Nothing is written to a project until you click <b>MAKE CHANGES</b>.</p>
+<figure>
+  <img src="Resources/links-manager-single.png" alt="The Links Manager window with one project, on the CAD tab">
+  <figcaption>One project, on the CAD tab. Drawing1 is re-pathed, keeping its relative path; Drawing3 is switched to Absolute. Drawing5, which Revit couldn't find, is set to unload.</figcaption>
+</figure>
 <h3>Load or unload links</h3>
 <ul>
-  <li>Tick or clear a link's <b>Is Loaded</b> checkbox <span class="n">3</span>.</li>
-  <li>Use <b>Load All</b> or <b>Unload All</b> <span class="n">13</span> for every link on the tab.</li>
-  <li>Select several rows and click <b>Load Selected Rows</b> or <b>Unload Selected Rows</b> <span class="n">14</span>.</li>
+  <li>Tick or clear a link's <b>Loaded</b> checkbox.</li>
+  <li>Select several rows and click <b>LOAD SELECTED</b> or <b>UNLOAD SELECTED</b>.</li>
+  <li>Click <b>LOAD ALL</b> or <b>UNLOAD ALL</b> for every link on the tab.</li>
 </ul>
 <h3>Re-path links</h3>
 <ul>
-  <li>Click a link's <b>Browse</b> button in the <b>Repath</b> column <span class="n">4</span> to pick its new file.</li>
-  <li>Select several rows and click <b>Repath Selected Rows</b> to point them all at one folder.</li>
-  <li>To re-path every link on the tab to one folder, click <b>Browse Folder</b> <span class="n">5</span> in the lower bar, then tick the <b>Repath All … Links</b> checkbox. Clear it to undo.</li>
-  <li>Click <b>Reset Paths</b> <span class="n">15</span> to put the paths back to what the project holds: as they were read, or as you last wrote them with <b>Make Changes</b>.</li>
+  <li>Click the <b>…</b> button at the end of a link's path to pick its new file.</li>
+  <li>Double-click a path, or select it and press F2, to type a new one. Press Enter to keep it, or Esc to cancel.</li>
+  <li>Select several rows and click <b>REPATH SELECTED…</b> to point them at the files of the same name in another folder.</li>
+  <li>Click <b>REPATH ALL TO FOLDER…</b> to do the same for every link on the tab.</li>
+  <li>Click <b>RESET CHANGES</b> to undo your changes to the selected links, or to every link on the tab if none are selected. Links go back to what the project holds: as they were read, or as you last wrote them with <b>MAKE CHANGES</b>.</li>
 </ul>
-<p>Links whose path type is Relative are re-pathed with a relative path, unless you tick <b>Repath with Absolute Paths</b>. A link on a different drive or network share from the project always gets its full path, because no relative path exists. The <b>Path Type</b> follows the new path: a link given a full path becomes Absolute, and one given a relative path becomes Relative.</p>
 <p>When you re-path a link, set it to Loaded as well, so Revit picks up the new file when the project opens.</p>
-<h3>Commit or close</h3>
-<p>Click <b>Make Changes</b> <span class="n">6</span> to write the changes. <b>Write All Links, Not Just Changed Ones</b> is ticked to start with, so every Revit, CAD and DWF link is written (see <a href="#notes">Important notes</a>). Clear it to write only the links you've changed; a project with no changes is then left exactly as it is. Tick the checkbox beside it to get a text file listing the result. <b>Close</b> <span class="n">7</span> leaves without saving anything you haven't committed.</p>
+<h3 id="pathtype">Relative or absolute</h3>
+<p>Choose <b>Relative</b> or <b>Absolute</b> from a link's <b>Path Type</b> list, as in Revit's Manage Links. Its path is converted to match: a relative path is worked out from the project's folder. Re-pathing keeps a link's path type, so a Relative link gets a relative path to its new file.</p>
+<p>A file on a different drive or network share from the project has no relative path, so its link can only be Absolute. Re-pathing a Relative link to one makes it Absolute, and choosing Relative for it says why it can't be changed. Typing a path sets the type too: a full path makes the link Absolute, and a relative one makes it Relative.</p>
+<h3>Make changes or close</h3>
+<p>The badge beside <b>MAKE CHANGES</b> counts the links you've changed. Click <b>MAKE CHANGES</b> to write the links of every project ticked to <b>Process</b>. A summary says how many projects were changed and how many had nothing to write, and lists any that couldn't be changed; each project's <b>Status</b> says the same.</p>
+<ul>
+  <li>Only the links you've changed are written, so a project with no changes is left exactly as it is. Tick <b>Write all links, not just changed ones</b> to write every Revit, CAD and DWF link instead (see <a href="#notes">Important notes</a>).</li>
+  <li>Tick <b>Open a text report afterwards</b> to get a text file listing the result.</li>
+</ul>
+<p><b>CLOSE</b> leaves without writing anything. If you've changed links that haven't been written, it asks first.</p>
 
 <h2 id="reports">Reports</h2>
-<p><b>Generate Text File – Current Status</b> and <b>Export All Paths to Excel</b> <span class="n">2</span> list every link in the project, both as last saved and as it will be when the project next opens. You can run them before or after making changes; neither changes the project.</p>
+<p><b>TEXT REPORT</b> and <b>EXPORT TO EXCEL</b> list every link of the projects ticked to <b>Process</b>, both as last saved and as it will be when each project next opens. You can run them before or after making changes; neither changes the projects.</p>
 <ul>
-  <li>The text file is tab-delimited and opens in your default text editor.</li>
-  <li>The Excel workbook has a sheet for each status, a <b>Link Type</b> column and filters on every column. Save it as a new file: it won't overwrite an existing one.</li>
+  <li>The text file is tab-delimited and opens in your default text editor. With more than one project, it has a project name column.</li>
+  <li>The Excel workbook has one <b>Links</b> sheet, laid out like the window's list: each link's <b>Path on Next Open</b> beside its <b>Last Saved Path</b>, with <b>Link Id</b>, <b>Link Type</b>, <b>Path Type</b> and <b>Link State</b> columns and filters on every column. Changed links are marked in the <b>Changed</b> column and highlighted in amber. Its suggested name starts with the date and time, then the project's name, such as <code>23.10.2026 11-05_links_Riverside - Central.xlsx</code>, or <code>_links_multiple projects</code> for more than one. Save it as a new file: it won't overwrite an existing one.</li>
 </ul>
 
 <h2 id="notes">Important notes</h2>
@@ -192,12 +200,14 @@
   <p><b>Workshared projects.</b> Changing a workshared project sets it to a transmitted state. The next time it opens, Revit asks whether to save it as a central model in its current location, or to work with it temporarily.</p>
 </div>
 <div class="note">
-  <p><b>Moving a project with its links.</b> If you'll move the project and its linked files to another folder after making changes, leave <b>Write All Links, Not Just Changed Ones</b> ticked when you click <b>Make Changes</b>. Make Changes sets the project to a transmitted state, and when it next opens, relative links that weren't written may not be found from the new folder.</p>
+  <p><b>Moving a project with its links.</b> If you'll move the project and its linked files to another folder after making changes, tick <b>Write all links, not just changed ones</b> before you click <b>MAKE CHANGES</b>. Make Changes sets the project to a transmitted state, and when it next opens, relative links that weren't written may not be found from the new folder.</p>
 </div>
 <ul>
-  <li>The project must not be open in Revit, by you or anyone else, when you click <b>Make Changes</b>.</li>
+  <li>A project must not be open in Revit, by you or anyone else, when you click <b>MAKE CHANGES</b>.</li>
   <li>Changes take effect the next time the project is opened. Until then, Revit uses the links as last saved.</li>
-  <li>IFC and point cloud links aren't supported and don't appear.</li>
+  <li>For a workshared project, add the central model, not a local copy: Revit works out relative paths from the central model's folder.</li>
+  <li>Revit links made from IFC files don't appear.</li>
+  <li>Each dialog starts where you last used it, even after Revit closes. <b>ADD FILES</b> and <b>ADD FOLDER</b> start where you last added projects. Repathing starts where the link points now, or where you last repathed to. The Excel export starts where you last saved one, or the first time, beside the project. The folders are kept in <code>%LOCALAPPDATA%\Mike Richardson Design\External Access Links Manager\Settings.txt</code>.</li>
 </ul>
 
 <h2 id="install">Install and uninstall</h2>
@@ -213,7 +223,7 @@
 <h2 id="history">Version history</h2>
 <table>
   <tr><th>Version</th><th>Changes</th></tr>
-  <tr><td>9.1.0</td><td>One install covers Revit 2024–2027, from a new setup that needs no admin rights. The files Excel export needs are now included for Revit 2025 and 2026. Fixes opening the text report and Excel file on Revit 2025 and later, message box titles, relative re-pathing to another drive or network share, and the batch summary, which now lists any project that couldn't be changed. A new <b>Write All Links, Not Just Changed Ones</b> option, ticked to start with, writes every link so relative links keep working when a project is moved along with its linked files; clear it to write only the links you've changed and leave a project with none untouched. Clearing <b>Is Loaded</b> on a link Revit couldn't find now unloads it, and a link's state updates as soon as its checkbox is clicked. A Relative link given a full path (with Repath with Absolute Paths, on another drive or share, or typed in) is now written as Absolute, rather than as Relative with a full path. Relative CAD links, which Revit hands over with their full path, are shown and written relative to the project.</td></tr>
+  <tr><td>9.1.0</td><td>One window, opened from a single <b>Links Manager</b> button, replaces the separate single-project and batch tools: add projects one at a time, from a folder or by dropping them on the window, and their links are read straight away. Each tab has one list showing the path on next open beside the last saved path, each link's path type is chosen from a list as in Revit's Manage Links, changed links are highlighted, and <b>CLOSE</b> asks before leaving changes unwritten. The Excel export lists every link on one sheet, like the window, and suggests a dated file name. Dialogs remember their folders between sessions, and every Revit year gets the same modern Windows folder picker. One install covers Revit 2024–2027, from a new setup that needs no admin rights. The files Excel export needs are now included for Revit 2025 and 2026. Fixes opening the text report and Excel file on Revit 2025 and later, message box titles, relative re-pathing to another drive or network share, and the batch summary, which now lists any project that couldn't be changed. Make Changes writes only the links you've changed, and leaves a project with none untouched; a new <b>Write all links, not just changed ones</b> option writes every link, so relative links keep working when a project is moved along with its linked files. Clearing <b>Is Loaded</b> on a link Revit couldn't find now unloads it, and a link's state updates as soon as its checkbox is clicked. A link's path type always matches its path: a Relative link given a full path (on another drive or share, or typed in) is written as Absolute, rather than as Relative with a full path. Relative CAD links, which Revit hands over with their full path, are shown and written relative to the project.</td></tr>
   <tr><td>9.0.0</td><td>Updated to work with Revit 2024</td></tr>
   <tr><td>8.0.0</td><td>Updated to work with Revit 2023</td></tr>
   <tr><td>7.0.0</td><td>Updated to work with Revit 2022</td></tr>

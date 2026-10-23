@@ -2,11 +2,12 @@
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using System;
+using System.Windows.Interop;
 
 namespace MRDTools
 {
     /// <summary>
-    /// Links Manager for repathing without opening
+    /// Links Manager for repathing without opening: one window for one project or many
     /// </summary>
 
     [Transaction(TransactionMode.Manual)]
@@ -14,25 +15,14 @@ namespace MRDTools
     {
         static AddInId appId = new AddInId(new Guid("48F3E8E8-F636-4009-8EEC-992B9A3F855B"));
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
-        {                       
-                #region Form Creation
-                /// <summary>
-                /// create and show form
-                /// </summary>
+        {
+            var window = new LinksManagerWindow();
 
-                using (MRDLinksForm thisForm = new MRDLinksForm(commandData))
-                    {
-                        thisForm.ShowDialog();
+            // Owned by Revit's main window, so it opens centred on Revit and stays in front of it
+            new WindowInteropHelper(window).Owner = commandData.Application.MainWindowHandle;
+            window.ShowDialog();
 
-                        if (thisForm.DialogResult == System.Windows.Forms.DialogResult.Cancel)
-                        {
-                            return Result.Cancelled;
-                        }
-                    }
-
-                #endregion //Form Creation
-
-                return Result.Succeeded;
-        }                  
+            return Result.Succeeded;
+        }
     }
 }

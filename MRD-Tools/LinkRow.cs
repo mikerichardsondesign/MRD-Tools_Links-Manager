@@ -124,6 +124,7 @@ namespace MRDTools
                 NotifyPropertyChanged(nameof(DesiredPath));
                 NotifyPropertyChanged(nameof(DesiredName));
                 NotifyPropertyChanged(nameof(DesiredPathType));
+                NotifyPropertyChanged(nameof(IsPathChanged));
                 NotifyPropertyChanged(nameof(IsDirty));
             }
         }
@@ -132,18 +133,33 @@ namespace MRDTools
 
         /// <summary>
         /// The path type to write with DesiredPath. Revit takes the path type as describing the path it's given, so once the
-        /// path has changed, a full path (Repath with Absolute Paths, another drive or share, or typed in) makes the link
-        /// Absolute and a relative path makes it Relative. An unchanged path keeps the type it was read with, as do Server links.
+        /// path has changed, a full path makes the link Absolute and a relative path makes it Relative. An unchanged path keeps
+        /// the type it was read with, as do Server links.
+        /// Setting it, as the Path Type list in the grid does, converts the path to match. A file on another drive or share
+        /// has no relative path, so asking for Relative then leaves the link Absolute.
         /// </summary>
         public string DesiredPathType
         {
             get
             {
-                bool relativeOrAbsolute = OriginalPathType == LinkConstants.PathTypeRelative || OriginalPathType == LinkConstants.PathTypeAbsolute;
-                if (!IsPathChanged || !relativeOrAbsolute) return OriginalPathType;
+                if (!IsPathChanged || !CanChangePathType) return OriginalPathType;
                 return IsFullPath(_desiredPath) ? LinkConstants.PathTypeAbsolute : LinkConstants.PathTypeRelative;
             }
+            set
+            {
+                if (CanChangePathType && value != DesiredPathType)
+                {
+                    if (value == LinkConstants.PathTypeRelative) DesiredPath = RelativeToProject(_desiredPath, ProjectPath);
+                    else if (value == LinkConstants.PathTypeAbsolute) DesiredPath = AbsoluteFromProject(_desiredPath, ProjectPath);
+                }
+                // Also when nothing changed, so a list bound to it shows the type the link really has
+                NotifyPropertyChanged(nameof(DesiredPathType));
+            }
         }
+
+        /// <summary>Revit, CAD and DWF links can be Relative or Absolute; Server links, and Other references, stay as they are.</summary>
+        public bool CanChangePathType => IsEditable &&
+            (OriginalPathType == LinkConstants.PathTypeRelative || OriginalPathType == LinkConstants.PathTypeAbsolute);
 
         public bool IsPathChanged => !string.Equals(_desiredPath, OriginalPath, StringComparison.OrdinalIgnoreCase);
 
@@ -174,24 +190,16 @@ namespace MRDTools
         #region Editing
 
         /// <summary>
-        /// Points the link at another file. A Relative link gets a path relative to its project, unless
-        /// forceAbsolute is set or the file is on another drive or share, where no relative path exists;
-        /// a full path then makes it Absolute (see DesiredPathType).
+        /// Points the link at another file, keeping its path type: a Relative link gets a path relative to its project,
+        /// unless the file is on another drive or share, where no relative path exists and the link becomes Absolute.
         /// </summary>
-        public void Repath(string targetPath, bool forceAbsolute)
+        public void Repath(string targetPath)
         {
-            string path = targetPath;
-            if (!forceAbsolute && OriginalPathType == LinkConstants.PathTypeRelative)
-            {
-                try { path = GetRelativePath.GetRelativePathUriA(targetPath, ProjectPath); }
-                catch (Exception) { path = targetPath; }
-            }
-            DesiredPath = path;
+            DesiredPath = DesiredPathType == LinkConstants.PathTypeRelative ? RelativeToProject(targetPath, ProjectPath) : targetPath;
         }
 
         /// <summary>Points the link at the file of the same name in another folder.</summary>
-        public void RepathToFolder(string folder, bool forceAbsolute) =>
-            Repath(System.IO.Path.Combine(folder, DesiredName), forceAbsolute);
+        public void RepathToFolder(string folder) => Repath(System.IO.Path.Combine(folder, DesiredName));
 
         public void ResetPath() => DesiredPath = OriginalPath;
 
@@ -206,6 +214,7 @@ namespace MRDTools
             OriginalName = _desiredName;
             OriginalLoaded = _desiredLoaded;
             OriginalState = _desiredState;
+            NotifyPropertyChanged(nameof(IsPathChanged));
             NotifyPropertyChanged(nameof(IsDirty));
         }
 
@@ -237,6 +246,20 @@ namespace MRDTools
             {
                 string relative = GetRelativePath.GetRelativePathUriA(path, projectPath);
                 return IsFullPath(relative) ? path : relative;
+            }
+            catch (Exception)
+            {
+                return path;
+            }
+        }
+
+        /// <summary>A relative path made full from the project's folder; a full path, or one that can't be resolved, comes back as it was.</summary>
+        internal static string AbsoluteFromProject(string path, string projectPath)
+        {
+            if (string.IsNullOrEmpty(path) || IsFullPath(path)) return path;
+            try
+            {
+                return System.IO.Path.GetFullPath(System.IO.Path.Combine(System.IO.Path.GetDirectoryName(projectPath), path));
             }
             catch (Exception)
             {
