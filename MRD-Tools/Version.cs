@@ -33,6 +33,9 @@ namespace MRDTools
             //Version 9.1.0 - One project for Revit 2024-2027 (net48 / net8 / net10). An interim build before 10.0.0.
             //Fixes opening reports and Excel files on .NET 8+, swapped message box titles, relative repaths
             //across drives or shares, and the batch summary reporting success when projects had failed
+            //Version 10.0.0 - One WPF Links Manager window replaces both tools. Find & Replace, Found and Saved In
+            //columns, Import from Excel, a preview before Make Changes, only changed links written by default,
+            //and locked Revit Server and IFC links
         }
     }
 }
