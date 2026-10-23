@@ -13,26 +13,21 @@ namespace MRDTools
         /// <summary>Writes the report to CurrentLinks.txt in the temp folder and returns its path.</summary>
         /// <param name="saved">Every link as last saved, in the order to list them.</param>
         /// <param name="desired">Revit, CAD and DWF links as desired, in the order to list them.</param>
-        /// <param name="prependNote">Starts with a note that nothing has been written yet.</param>
-        /// <param name="includeProjectName">Adds a Project Name column (batch mode).</param>
-        public static string WriteTempFile(IEnumerable<LinkRow> saved, IEnumerable<LinkRow> desired,
-            bool prependNote, bool includeProjectName)
+        /// <param name="includeProjectName">Adds a Project Name column (more than one project).</param>
+        public static string WriteTempFile(IEnumerable<LinkRow> saved, IEnumerable<LinkRow> desired, bool includeProjectName)
         {
             string outputFile = Path.Combine(Path.GetTempPath(), "CurrentLinks.txt");
-            File.WriteAllText(outputFile, Build(saved, desired, prependNote, includeProjectName));
+            File.WriteAllText(outputFile, Build(saved, desired, includeProjectName));
             return outputFile;
         }
 
-        public static string Build(IEnumerable<LinkRow> saved, IEnumerable<LinkRow> desired,
-            bool prependNote, bool includeProjectName)
+        /// <summary>The report's text, starting with a note that the next-open links only apply once written.</summary>
+        public static string Build(IEnumerable<LinkRow> saved, IEnumerable<LinkRow> desired, bool includeProjectName)
         {
             var sb = new StringBuilder();
-            if (prependNote)
-            {
-                sb.AppendLine("PLEASE NOTE THAT THIS OUTPUT IS WHAT WILL BE TRUE IF CHANGES ARE COMMITED BY PRESSING THE 'MAKE CHANGES' BUTTON");
-                sb.AppendLine("IF CHANGES ARE NOT COMMITTED THEN THE STATUS OF LINKS WILL STAY AS THEY WERE");
-                sb.AppendLine();
-            }
+            sb.AppendLine("PLEASE NOTE THAT THIS OUTPUT IS WHAT WILL BE TRUE IF CHANGES ARE COMMITED BY PRESSING THE 'MAKE CHANGES' BUTTON");
+            sb.AppendLine("IF CHANGES ARE NOT COMMITTED THEN THE STATUS OF LINKS WILL STAY AS THEY WERE");
+            sb.AppendLine();
 
             const string nextOpen = "CURRENT LINK STATUS WHICH WILL BE APPLIED UPON NEXT OPEN OF PROJECT";
             AppendSection(sb, "REVIT - LAST SAVED LINK STATUS", saved, LinkKind.Revit, proposed: false, includeSavedTime: true, includeProjectName);

@@ -324,7 +324,6 @@
                     <Border x:Name="ChangesBadge" DockPanel.Dock="Right" Style="{StaticResource Badge}" Margin="0,0,12,0">
                         <TextBlock x:Name="ChangesBadgeText" />
                     </Border>
-                    <CheckBox x:Name="OpenReportAfter" DockPanel.Dock="Right" Content="Open a text report afterwards" Margin="0,0,20,0" />
                     <CheckBox x:Name="WriteAllLinks" DockPanel.Dock="Right" Content="Write all links, not just changed ones" Margin="0,0,20,0" />
                     <Border />
                 </DockPanel>

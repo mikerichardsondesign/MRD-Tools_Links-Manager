@@ -422,11 +422,11 @@ namespace MRDTools
 
         #region Reports
 
-        string WriteReport(bool prependNote)
+        string WriteReport()
         {
             List<LinkRow> processed = ProcessedLinks();
             bool manyProjects = processed.Select(l => l.ProjectPath).Distinct(StringComparer.OrdinalIgnoreCase).Count() > 1;
-            return LinkReport.WriteTempFile(processed, processed.Where(l => l.IsEditable), prependNote, includeProjectName: manyProjects);
+            return LinkReport.WriteTempFile(processed, processed.Where(l => l.IsEditable), includeProjectName: manyProjects);
         }
 
         void TextReport_Click(object sender, RoutedEventArgs e)
@@ -434,7 +434,7 @@ namespace MRDTools
             LinksGrid.CommitEdit(DataGridEditingUnit.Row, true);
             try
             {
-                ShellOpen.Open(WriteReport(prependNote: true));
+                ShellOpen.Open(WriteReport());
             }
             catch (Exception ex)
             {
@@ -552,13 +552,6 @@ namespace MRDTools
                     ? $"\n\n{unchangedCount} project(s) had no Revit, CAD or DWF links and were left as they were"
                     : $"\n\n{unchangedCount} project(s) had no changed links and were left as they were";
 
-            string outputFile = null;
-            if (OpenReportAfter.IsChecked == true)
-            {
-                try { outputFile = WriteReport(prependNote: false); }
-                catch (Exception ex) { summary += "\n\nThe text file could not be written: " + ex.Message; }
-            }
-
             if (failures.Count == 0)
             {
                 Show(summary, "Links Amended");
@@ -569,8 +562,6 @@ namespace MRDTools
                 MessageBox.Show(this, summary, amendedCount == 0 ? "Error - No Links Amended" : "Error - Some Links Not Amended",
                     MessageBoxButton.OK, MessageBoxImage.Warning);
             }
-
-            if (outputFile != null) ShellOpen.Open(outputFile);
         }
 
         #endregion
