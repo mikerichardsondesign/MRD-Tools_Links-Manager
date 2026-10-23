@@ -736,7 +736,7 @@ namespace MRDTools
             if (unmatched > 0)
                 lines.Add($"{Plural(unmatched, "row")} didn't match a link of the projects in the list.");
             if (readOnly > 0)
-                lines.Add($"{Plural(readOnly, "change")} to links that can't be changed here (Other, Revit Server, cloud and IFC links) "
+                lines.Add($"{Plural(readOnly, "change")} to links that can't be changed here (Other, Revit Server and IFC links) "
                     + (readOnly == 1 ? "was" : "were") + " left out.");
             if (noRelative > 0)
                 lines.Add($"{Plural(noRelative, "link")} couldn't be made relative: " + (noRelative == 1 ? "it's" : "they're")

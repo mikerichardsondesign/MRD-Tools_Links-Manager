@@ -251,7 +251,7 @@ namespace MRDTools.Checks
                 + "\n\n4 links changed: 2 paths, 1 path type and 1 load state. They're highlighted, ready for MAKE CHANGES, and RESET CHANGES undoes them."
                 + "\n\nLinks of 1 project that aren't in the list were left out: Other.rvt. Add them, then import again."
                 + "\n\n1 row didn't match a link of the projects in the list."
-                + "\n\n1 change to links that can't be changed here (Other, Revit Server, cloud and IFC links) was left out.",
+                + "\n\n1 change to links that can't be changed here (Other, Revit Server and IFC links) was left out.",
                 window.ApplyWorkbook(edited, book), "the import says what it changed and what it left out");
             Eq(@"Links\Here.rvt", gone.DesiredPath, "an edited path is set");
             Check(!here.DesiredLoaded, "an edited load state is set, with its id turned into a number by Excel");
