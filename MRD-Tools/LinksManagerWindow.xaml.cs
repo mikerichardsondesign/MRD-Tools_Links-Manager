@@ -9,6 +9,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
+using System.Windows.Threading;
 
 namespace MRDTools
 {
@@ -31,6 +32,16 @@ namespace MRDTools
         // Looks for each link's file in the background, for the Found column
         readonly FileChecker fileChecker;
 
+        // Reads a found Revit link's details for the Saved In column. A field, so the test harness can stand in for Revit.
+        internal Func<string, LinkFileInfo> readFileInfo = RevitFileInfo.Read;
+
+        // Revit links whose files were found, waiting for their details. Revit's API only works on this thread, so they're
+        // read one at a time while the window is idle, each file once, and not at all once the window has closed.
+        readonly Queue<LinkRow> infoQueue = new Queue<LinkRow>();
+        readonly Dictionary<string, LinkFileInfo> infoByFile = new Dictionary<string, LinkFileInfo>(StringComparer.OrdinalIgnoreCase);
+        bool infoScheduled;
+        bool closed;
+
         // Set while many links are edited at once, so the counts are worked out once at the end
         bool bulkEdit;
 
@@ -45,9 +56,15 @@ namespace MRDTools
         {
             InitializeComponent();
             Icon = WindowIcon.Load();
+
+            // Open as large as the screen allows, up to a size where the paths have room, and no smaller than the minimum
+            Rect work = SystemParameters.WorkArea;
+            Width = Math.Max(MinWidth, Math.Min(1480, work.Width - 40));
+            Height = Math.Max(MinHeight, Math.Min(880, work.Height - 40));
             VersionText.Text = typeof(LinksManagerWindow).Assembly.GetName().Version.ToString(3);
             WriteAllLinks.ToolTip = LinkConstants.TipWriteAllLinks;
             fileChecker = new FileChecker(Dispatcher);
+            Closed += (sender, e) => closed = true;
 
             ProjectsGrid.ItemsSource = projects;
             linksView = new ListCollectionView(links) { Filter = IsShown };
@@ -110,6 +127,8 @@ namespace MRDTools
             // One project is the single-project tool: no need for a Project column
             int projectsWithLinks = processed.Select(l => l.ProjectPath).Distinct(StringComparer.OrdinalIgnoreCase).Count();
             ProjectColumn.Visibility = projectsWithLinks > 1 ? Visibility.Visible : Visibility.Collapsed;
+            // Only Revit links have a Revit version
+            SavedInColumn.Visibility = SelectedKind == LinkKind.Revit ? Visibility.Visible : Visibility.Collapsed;
 
             ProjectCount.Text = projects.Count == 0 ? "" : projects.Count == 1 ? "1 project" : $"{projects.Count} projects";
             ProjectsHint.Visibility = projects.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -121,6 +140,7 @@ namespace MRDTools
 
             MakeChangesButton.IsEnabled = projects.Any(p => p.Process);
             TextReportButton.IsEnabled = ExcelButton.IsEnabled = processed.Count > 0;
+            ImportButton.IsEnabled = links.Count > 0;
             LinkTools.IsEnabled = SelectedKind != LinkKind.Other && linksView.Count > 0;
         }
 
@@ -139,8 +159,11 @@ namespace MRDTools
             {
                 fileChecker.Check((LinkRow)sender);
             }
-            else if (!bulkEdit && e.PropertyName == nameof(LinkRow.FileStatus))
+            else if (e.PropertyName == nameof(LinkRow.FileStatus))
             {
+                var row = (LinkRow)sender;
+                if (row.Kind == LinkKind.Revit && row.FoundFile != null) QueueFileInfo(row);
+                if (bulkEdit) return;
                 List<LinkRow> processed = ProcessedLinks();
                 RefreshLinksSummary(processed, processed.Select(l => l.ProjectPath).Distinct(StringComparer.OrdinalIgnoreCase).Count());
             }
@@ -149,6 +172,47 @@ namespace MRDTools
                 RefreshCounts();
             }
         }
+
+        void QueueFileInfo(LinkRow row)
+        {
+            infoQueue.Enqueue(row);
+            ScheduleFileInfo();
+        }
+
+        void ScheduleFileInfo()
+        {
+            if (infoScheduled || closed || infoQueue.Count == 0) return;
+            infoScheduled = true;
+            Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, new Action(ReadNextFileInfo));
+        }
+
+        /// <summary>Hands out details already read, then reads one more file, leaving the window free in between.</summary>
+        void ReadNextFileInfo()
+        {
+            infoScheduled = false;
+            while (infoQueue.Count > 0 && !closed)
+            {
+                LinkRow row = infoQueue.Dequeue();
+                string file = row.FoundFile;
+                if (file == null) continue;
+                if (infoByFile.TryGetValue(file, out LinkFileInfo known))
+                {
+                    row.SetFileInfo(file, known);
+                    continue;
+                }
+
+                LinkFileInfo info;
+                try { info = readFileInfo(file); }
+                catch (Exception ex) { info = LinkFileInfo.Unreadable(ex.Message); }
+                infoByFile[file] = info;
+                row.SetFileInfo(file, info);
+                break;
+            }
+            ScheduleFileInfo();
+        }
+
+        /// <summary>Whether every found Revit link's details have been read.</summary>
+        internal bool FileInfoDone => infoQueue.Count == 0 && !infoScheduled;
 
         void Project_PropertyChanged(object sender, PropertyChangedEventArgs e)
         {
@@ -473,7 +537,8 @@ namespace MRDTools
         {
             List<LinkRow> processed = ProcessedLinks();
             bool manyProjects = processed.Select(l => l.ProjectPath).Distinct(StringComparer.OrdinalIgnoreCase).Count() > 1;
-            return LinkReport.WriteTempFile(processed, processed.Where(l => l.IsEditable), includeProjectName: manyProjects);
+            // Read-only links are listed as they'll be next time too, which is as they are now
+            return LinkReport.WriteTempFile(processed, processed.Where(l => l.Kind != LinkKind.Other), includeProjectName: manyProjects);
         }
 
         void TextReport_Click(object sender, RoutedEventArgs e)
@@ -534,6 +599,165 @@ namespace MRDTools
             }
             ShellOpen.Open(dlg.FileName);
         }
+
+        void ImportExcel_Click(object sender, RoutedEventArgs e)
+        {
+            LinksGrid.CommitEdit(DataGridEditingUnit.Row, true);
+            var dlg = new Microsoft.Win32.OpenFileDialog
+            {
+                Filter = "Excel Files (*.xlsx)|*.xlsx",
+                Title = "Import links from an exported workbook"
+            };
+            string firstProject = projects.Select(p => p.Path).FirstOrDefault();
+            string start = FolderMemory.FirstExisting(folders.ExportFolder, firstProject == null ? null : Path.GetDirectoryName(firstProject));
+            if (start != null) dlg.InitialDirectory = start;
+            if (dlg.ShowDialog(this) != true) return;
+            folders.ExportFolder = Path.GetDirectoryName(dlg.FileName);
+            folders.Save();
+
+            List<LinkWorkbook.WorkbookLink> rows;
+            try
+            {
+                rows = LinkWorkbook.Read(dlg.FileName);
+            }
+            catch (Exception ex)
+            {
+                Show("The workbook couldn't be read:\n" + ex.Message, "Import from Excel");
+                return;
+            }
+            Show(ApplyWorkbook(rows, dlg.FileName), "Import from Excel");
+        }
+
+        /// <summary>
+        /// Sets links' paths, path types and load states as a workbook has them, as changes waiting for Make Changes, and
+        /// returns a summary. Rows are matched to links by project and Link Id: the project is the one in the hidden Master
+        /// File Path column, or failing that, the only project in the list with its Project Name.
+        /// </summary>
+        internal string ApplyWorkbook(List<LinkWorkbook.WorkbookLink> rows, string fileName)
+        {
+            var changed = new HashSet<LinkRow>();
+            var notListed = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+            int paths = 0, types = 0, states = 0, unmatched = 0, readOnly = 0, noRelative = 0;
+
+            bulkEdit = true;
+            try
+            {
+                foreach (LinkWorkbook.WorkbookLink row in rows)
+                {
+                    ProjectRow project = WorkbookProject(row);
+                    if (project == null)
+                    {
+                        string name = row.ProjectName.Length > 0 ? row.ProjectName : LinkRow.FileNameOf(row.ProjectPath);
+                        if (name.Length > 0 && !projects.Any(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase))) notListed.Add(name);
+                        else unmatched++;
+                        continue;
+                    }
+                    LinkRow link = links.FirstOrDefault(l => string.Equals(l.ProjectPath, project.Path, StringComparison.OrdinalIgnoreCase)
+                        && l.RefId == row.RefId
+                        && (row.LinkType.Length == 0 || string.Equals(l.LinkTypeName, row.LinkType, StringComparison.OrdinalIgnoreCase)));
+                    if (link == null)
+                    {
+                        unmatched++;
+                        continue;
+                    }
+
+                    bool? loaded = LoadedFromState(row.State);
+                    string type = string.Equals(row.PathType, LinkConstants.PathTypeRelative, StringComparison.OrdinalIgnoreCase) ? LinkConstants.PathTypeRelative
+                        : string.Equals(row.PathType, LinkConstants.PathTypeAbsolute, StringComparison.OrdinalIgnoreCase) ? LinkConstants.PathTypeAbsolute
+                        : null;
+                    bool pathDiffers = row.DesiredPath.Length > 0 && row.DesiredPath != link.DesiredPath;
+                    bool typeDiffers = type != null && type != link.DesiredPathType;
+                    bool loadedDiffers = loaded.HasValue && loaded.Value != link.DesiredLoaded;
+                    if (!pathDiffers && !typeDiffers && !loadedDiffers) continue;
+                    if (!link.IsEditable)
+                    {
+                        readOnly++;
+                        continue;
+                    }
+
+                    string typeBefore = link.DesiredPathType;
+                    if (pathDiffers)
+                    {
+                        link.DesiredPath = row.DesiredPath;
+                        paths++;
+                        changed.Add(link);
+                    }
+                    // A type changed in the workbook is set after the path. One left as it was follows the path, as it does
+                    // when a path is typed, so a full path typed into a Relative link's row makes it Absolute.
+                    if (type != null && type != typeBefore && type != link.DesiredPathType && link.CanChangePathType)
+                    {
+                        link.DesiredPathType = type;
+                        if (link.DesiredPathType == type)
+                        {
+                            types++;
+                            changed.Add(link);
+                        }
+                        else
+                        {
+                            noRelative++;
+                        }
+                    }
+                    if (loadedDiffers)
+                    {
+                        link.DesiredLoaded = loaded.Value;
+                        states++;
+                        changed.Add(link);
+                    }
+                }
+            }
+            finally
+            {
+                bulkEdit = false;
+            }
+            RefreshCounts();
+
+            var lines = new List<string> { $"{Plural(rows.Count, "link")} read from {Path.GetFileName(fileName)}." };
+            if (changed.Count == 0)
+            {
+                lines.Add("None of them differ from the list. If you've edited the workbook in Excel, save it there first.");
+            }
+            else
+            {
+                var what = new List<string>();
+                if (paths > 0) what.Add(Plural(paths, "path"));
+                if (types > 0) what.Add(Plural(types, "path type"));
+                if (states > 0) what.Add(Plural(states, "load state"));
+                lines.Add($"{Plural(changed.Count, "link")} changed: {JoinWithAnd(what)}. They're highlighted, ready for MAKE CHANGES, and RESET CHANGES undoes them.");
+            }
+            if (notListed.Count > 0)
+                lines.Add($"Links of {Plural(notListed.Count, "project")} that aren't in the list were left out: "
+                    + string.Join(", ", notListed.Take(5)) + (notListed.Count > 5 ? ", …" : "") + ". Add them, then import again.");
+            if (unmatched > 0)
+                lines.Add($"{Plural(unmatched, "row")} didn't match a link of the projects in the list.");
+            if (readOnly > 0)
+                lines.Add($"{Plural(readOnly, "change")} to links that can't be changed here (Other, Revit Server, cloud and IFC links) "
+                    + (readOnly == 1 ? "was" : "were") + " left out.");
+            if (noRelative > 0)
+                lines.Add($"{Plural(noRelative, "link")} couldn't be made relative: " + (noRelative == 1 ? "it's" : "they're")
+                    + " on a different drive or network share from the project.");
+            return string.Join("\n\n", lines);
+        }
+
+        /// <summary>The project a workbook row belongs to: by its full path, or else by a name only one listed project has.</summary>
+        ProjectRow WorkbookProject(LinkWorkbook.WorkbookLink row)
+        {
+            if (row.ProjectPath.Length > 0 && projectsByPath.TryGetValue(row.ProjectPath, out ProjectRow byPath)) return byPath;
+            string name = row.ProjectName.Length > 0 ? row.ProjectName : LinkRow.FileNameOf(row.ProjectPath);
+            List<ProjectRow> named = projects.Where(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase)).ToList();
+            return named.Count == 1 ? named[0] : null;
+        }
+
+        /// <summary>Loaded or NotFound (which Revit tries to load) as loaded, Unloaded as not, anything else as no change.</summary>
+        static bool? LoadedFromState(string state)
+        {
+            if (string.Equals(state, LinkConstants.StateUnloaded, StringComparison.OrdinalIgnoreCase)) return false;
+            if (string.Equals(state, LinkConstants.StateLoaded, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(state, LinkConstants.StateNotFound, StringComparison.OrdinalIgnoreCase)) return true;
+            return null;
+        }
+
+        static string JoinWithAnd(List<string> items) =>
+            items.Count <= 1 ? string.Join("", items) : string.Join(", ", items.Take(items.Count - 1)) + " and " + items[items.Count - 1];
 
         #endregion
 

@@ -42,6 +42,7 @@ namespace MRDTools
         string _desiredState;
         LinkFileStatus _fileStatus = LinkFileStatus.NotChecked;
         string _checkedFile;
+        LinkFileInfo _fileInfo;
 
         #endregion
 
@@ -69,6 +70,7 @@ namespace MRDTools
             OriginalName = _desiredName = FileNameOf(desiredPath);
             OriginalState = _desiredState = desiredState;
             OriginalLoaded = _desiredLoaded = IsLoadedState(desiredState);
+            ReadOnlyReason = WhyReadOnly();
         }
 
         #endregion
@@ -82,7 +84,18 @@ namespace MRDTools
         /// <summary>Id of the element that references the linked file, shown as the Link Id.</summary>
         public string RefId { get; }
         public LinkKind Kind { get; }
-        public bool IsEditable => Kind != LinkKind.Other;
+
+        /// <summary>
+        /// Why a Revit, CAD or DWF link can't be changed here, or null when it can: a Revit Server or cloud model, whose path
+        /// isn't a file this can write, or a Revit link made from an IFC file, which Revit manages through the IFC link.
+        /// Other references are all left as they are, which their tab says.
+        /// </summary>
+        public string ReadOnlyReason { get; }
+
+        public bool IsReadOnly => ReadOnlyReason != null;
+
+        /// <summary>A Revit, CAD or DWF link that can be changed and written.</summary>
+        public bool IsEditable => Kind != LinkKind.Other && !IsReadOnly;
 
         /// <summary>The short type name the Excel export uses: Rvt, Dwg, Dwf or Other.</summary>
         public string LinkTypeName
@@ -220,19 +233,19 @@ namespace MRDTools
                     case LinkFileStatus.Found: return "Found: " + _checkedFile;
                     case LinkFileStatus.Missing: return "Not found from this computer: " + _checkedFile;
                     case LinkFileStatus.Checking: return "Looking for " + _checkedFile;
-                    default: return IsEditable && !string.IsNullOrWhiteSpace(_desiredPath) ? "Revit Server and cloud models aren't looked for" : null;
+                    default: return Kind != LinkKind.Other && !string.IsNullOrWhiteSpace(_desiredPath) ? "Revit Server and cloud models aren't looked for" : null;
                 }
             }
         }
 
         /// <summary>
         /// The full path of the file DesiredPath points at, with a relative path worked out from the project's folder, or null
-        /// when there's no file to look for: an Other reference, or a Revit Server or cloud model.
+        /// when there's no file to look for: an Other reference, or a Revit Server or cloud model. A link made from an IFC file
+        /// is looked for, although it can't be changed here.
         /// </summary>
         internal string FileToCheck()
         {
-            if (!IsEditable || string.IsNullOrWhiteSpace(_desiredPath) || _desiredPath.Contains("://")
-                || OriginalPathType == LinkConstants.PathTypeServer)
+            if (Kind == LinkKind.Other || string.IsNullOrWhiteSpace(_desiredPath) || IsRemote(_desiredPath, OriginalPathType))
                 return null;
             string full = AbsoluteFromProject(_desiredPath, ProjectPath);
             return IsFullPath(full) ? full : null;
@@ -260,6 +273,27 @@ namespace MRDTools
             _checkedFile = file;
             NotifyPropertyChanged(nameof(FileStatus));
             NotifyPropertyChanged(nameof(FileStatusText));
+
+            // A file's details only hold while it's the one found
+            if (status != LinkFileStatus.Found && _fileInfo != null)
+            {
+                _fileInfo = null;
+                NotifyPropertyChanged(nameof(FileInfo));
+            }
+        }
+
+        /// <summary>The file DesiredPath points at, when it was found; otherwise null.</summary>
+        internal string FoundFile => _fileStatus == LinkFileStatus.Found ? _checkedFile : null;
+
+        /// <summary>A Revit link's file details, for the Saved In column. Null until its file is found and they're read.</summary>
+        public LinkFileInfo FileInfo => _fileInfo;
+
+        /// <summary>Records the found file's details, unless the link has been pointed at another file since.</summary>
+        internal void SetFileInfo(string file, LinkFileInfo info)
+        {
+            if (FoundFile == null || !string.Equals(file, FoundFile, StringComparison.OrdinalIgnoreCase)) return;
+            _fileInfo = info;
+            NotifyPropertyChanged(nameof(FileInfo));
         }
 
         #endregion
@@ -315,6 +349,25 @@ namespace MRDTools
         #endregion
 
         #region Helpers
+
+        string WhyReadOnly()
+        {
+            if (Kind == LinkKind.Other) return null;
+            if (OriginalPathType == LinkConstants.PathTypeServer || LastSavedPathType == LinkConstants.PathTypeServer)
+                return "A Revit Server model: change it in Revit's Manage Links";
+            if (IsRemote(OriginalPath, OriginalPathType) || IsRemote(LastSavedPath, LastSavedPathType))
+                return "A cloud model: change it in Revit's Manage Links";
+            if (Kind == LinkKind.Revit && (GetExtension.IfcRvtExtension(OriginalName) || GetExtension.IfcRvtExtension(LastSavedName)))
+                return "Made from an IFC file, which Revit manages through the IFC link: change it in Revit's Manage Links";
+            return null;
+        }
+
+        /// <summary>
+        /// A Revit Server or cloud model, rather than a file: Revit shows their paths as RSN://..., BIM 360://... or
+        /// Autodesk Docs://..., and the scanner gives cloud models the Cloud path type.
+        /// </summary>
+        internal static bool IsRemote(string path, string pathType) =>
+            pathType == LinkConstants.PathTypeServer || pathType == LinkConstants.PathTypeCloud || (path ?? "").Contains("://");
 
         /// <summary>Revit loads a link that is Loaded, and tries again on opening one it couldn't find.</summary>
         internal static bool IsLoadedState(string state) =>

@@ -95,6 +95,7 @@
     <a href="#start">Getting started</a>
     <a href="#projects">Projects</a>
     <a href="#reading">Reading the links</a>
+    <a href="#listed">Which links</a>
     <a href="#changes">Making changes</a>
     <a href="#reports">Reports</a>
     <a href="#notes">Important notes</a>
@@ -119,7 +120,7 @@
 </ol>
 <figure>
   <img src="Resources/links-manager.png" alt="The Links Manager window, with three projects listed and their Revit links below">
-  <figcaption>Three projects added. One couldn't be read, so it isn't processed. The Revit tab shows two changed links, highlighted in amber, and RVT Link D, whose file isn't found, in red.</figcaption>
+  <figcaption>Three projects added. One couldn't be read, so it isn't processed. The Revit tab shows two changed links, highlighted in amber, and RVT Link D, whose file isn't found, in red. Under Saved In, Structure.rvt is a local copy, in amber, and the IFC link has a lock.</figcaption>
 </figure>
 
 <h2 id="projects">Projects</h2>
@@ -142,20 +143,36 @@
 <p>With one project in the list, the window works as the single-project tool did, and the links list drops its <b>Project</b> column.</p>
 
 <h2 id="reading">Reading the links</h2>
-<p>The links are split across four tabs, <b>Revit</b>, <b>CAD</b>, <b>DWF</b> and <b>Other</b>, each with a count. Other holds things such as keynote tables, and its links are shown but can't be changed. Each tab has one list, with a row for every link of the projects ticked to <b>Process</b>.</p>
+<p>The links are split across four tabs, <b>Revit</b>, <b>CAD</b>, <b>DWF</b> and <b>Other</b>, each with a count. Other holds things such as keynote tables, and its links are shown but can't be changed. Each tab has one list, with a row for every link of the projects ticked to <b>Process</b>. Point clouds, coordination models and some other kinds of link aren't listed: see <a href="#listed">Which links are listed</a>.</p>
 <table>
   <tr><th>Column</th><th>Shows</th></tr>
   <tr><td>Project</td><td>The project the link belongs to (only with more than one project)</td></tr>
-  <tr><td>Link Name</td><td>The linked file's name</td></tr>
+  <tr><td>Link Name</td><td>The linked file's name. A lock means the link can't be changed here: it's a Revit Server model, or a link made from an IFC file, which Revit manages through the IFC link. Hover over the lock to see which, and change these links in Revit's Manage Links.</td></tr>
   <tr><td>Path Type</td><td>Relative or Absolute, chosen from a list as in Revit's Manage Links (see <a href="#pathtype">Relative or absolute</a>)</td></tr>
   <tr><td>Loaded</td><td>Whether Revit will load the link the next time the project opens</td></tr>
   <tr><td>State</td><td>Loaded, Unloaded or NotFound (in red: Revit couldn't find the file when the project was last saved)</td></tr>
-  <tr><td>Found</td><td>Whether the path on next open finds a file now: a tick if it does, a red warning if it doesn't, and a dash for a Revit Server or cloud model, which isn't looked for. It's looked for again whenever you change the path. Hover over it to see the full path that was looked for. It's looked for from this computer, so a drive mapped differently on another computer can give a different answer.</td></tr>
+  <tr><td>Found</td><td>Whether the path on next open finds a file now: a tick if it does, a red warning if it doesn't, and a dash for a Revit Server model, which isn't looked for. It's looked for again whenever you change the path. Hover over it to see the full path that was looked for. It's looked for from this computer, so a drive mapped differently on another computer can give a different answer.</td></tr>
+  <tr><td>Saved In</td><td>On the Revit tab: the Revit version the linked model was saved in, and whether it's a central model or a local copy. A local copy is in amber: link the central model instead, so the link shows everyone's saved work. A version later than this Revit is in red, as it won't load. It's read from the file without opening it, once the file is found. Hover over it for more.</td></tr>
   <tr><td>Path on Next Open</td><td>The path Revit will use the next time the project opens. This is the one you change.</td></tr>
   <tr><td>Last Saved Path</td><td>The path when the project was last saved. For a Relative link it's relative to the project, as in Revit's Manage Links; otherwise it's the full path.</td></tr>
   <tr><td>File Date</td><td>When the linked file was last saved, or "Date Not Found" if it can't be found</td></tr>
 </table>
 <p>A link you've changed gets an amber row with a bar at its left edge, and a changed path is shown in bold. A link whose file isn't found gets a red row instead, keeping the amber bar if you've changed it. Click a column heading to sort by it: the <b>Found</b> heading brings the links whose files weren't found to the top, and the count above the list says how many there are. Hover over a path to see all of it.</p>
+
+<h2 id="listed">Which links are listed</h2>
+<p>The Links Manager reads and changes a project's links without opening it, from the list of links Revit keeps in the project file for this (its transmission data). Revit only keeps some kinds of link there, so some of the tabs in its Manage Links dialog have no match here. Links that aren't listed can only be seen and changed with the project open, in Manage Links.</p>
+<table>
+  <tr><th>Manage Links tab</th><th>In the Links Manager</th></tr>
+  <tr><td>Revit</td><td>The <b>Revit</b> tab. Revit Server models are listed with a lock, and can't be changed here. Cloud models on BIM 360 or Autodesk Docs aren't listed (see <a href="#cloud">Cloud links</a>).</td></tr>
+  <tr><td>IFC</td><td>The <b>Revit</b> tab, as the Revit link Revit makes from each IFC file (<code>name.ifc.rvt</code>), with a lock. Change the IFC link itself in Manage Links.</td></tr>
+  <tr><td>CAD Formats</td><td>The <b>CAD</b> tab</td></tr>
+  <tr><td>DWF Markups</td><td>The <b>DWF</b> tab</td></tr>
+  <tr><td>Point Clouds</td><td>Not listed</td></tr>
+  <tr><td>Topography</td><td>Not listed</td></tr>
+  <tr><td>Coordination Model</td><td>Not listed: neither Navisworks <code>.nwc</code> and <code>.nwd</code> files, nor Autodesk Docs views</td></tr>
+  <tr><td>PDF, Images</td><td>Not listed</td></tr>
+</table>
+<p>The <b>Other</b> tab shows references that aren't on Manage Links' tabs: the project's keynote table and assembly code table, rendering decals, and systems analysis reports. They're shown as last saved, and not changed.</p>
 
 <h2 id="changes">Making changes</h2>
 <p>Nothing is written to a project until you click <b>MAKE CHANGES</b>.</p>
@@ -197,10 +214,22 @@
   <li>The text file is tab-delimited and opens in your default text editor. With more than one project, it has a project name column.</li>
   <li>The Excel workbook has one <b>Links</b> sheet, laid out like the window's list: each link's <b>Path on Next Open</b> beside its <b>Last Saved Path</b>, with <b>Link Id</b>, <b>Link Type</b>, <b>Path Type</b> and <b>Link State</b> columns and filters on every column. Changed links are marked in the <b>Changed</b> column and highlighted in amber. Its suggested name starts with the date and time, then the project's name, such as <code>23.10.2026 11-05_links_Riverside - Central.xlsx</code>, or <code>_links_multiple projects</code> for more than one. Save it as a new file: it won't overwrite an existing one.</li>
 </ul>
+<h3 id="import">Edit in Excel and import</h3>
+<p>To change many links in Excel, export them, edit the workbook's <b>Path on Next Open</b>, <b>Path Type</b> or <b>Link State</b> columns, save it, and click <b>IMPORT FROM EXCEL…</b>. The changes are made in the window as if you'd made them there: highlighted, ready for <b>MAKE CHANGES</b>, and undone by <b>RESET CHANGES</b>. Nothing is written to the projects until you click <b>MAKE CHANGES</b>. A summary says what changed and what was left out.</p>
+<ul>
+  <li>Rows are matched to links by project and <b>Link Id</b>, so leave those as they are. Columns can be moved, and rows sorted or filtered.</li>
+  <li>Only projects in the list are changed, so add any others first.</li>
+  <li>A <b>Path Type</b> you change is applied after the path. If you leave it as it was, the path decides it, as when you type a path: a full path makes the link Absolute, and a relative one Relative.</li>
+  <li>Links that can't be changed here (Other, Revit Server and IFC links) are left out.</li>
+  <li>Save the workbook in Excel first. It's read as it was last saved, even while Excel has it open.</li>
+</ul>
 
 <h2 id="notes">Important notes</h2>
 <div class="note">
   <p><b>Workshared projects.</b> Changing a workshared project sets it to a transmitted state. The next time it opens, Revit asks whether to save it as a central model in its current location, or to work with it temporarily.</p>
+</div>
+<div class="note" id="cloud">
+  <p><b>Cloud links.</b> Links to cloud models on BIM 360 or Autodesk Docs aren't listed. Revit only keeps links to files and Revit Server models where they can be read without opening the project, so cloud links can only be seen and changed in Revit's Manage Links. If you're saving a cloud model down to a local or network folder, repath its links in Revit first, while the model is still in the cloud, so the saved copy points at the files you want. This tool can then manage those links.</p>
 </div>
 <div class="note">
   <p><b>Moving a project with its links.</b> If you'll move the project and its linked files to another folder after making changes, tick <b>Write all links, not just changed ones</b> before you click <b>MAKE CHANGES</b>. Make Changes sets the project to a transmitted state, and when it next opens, relative links that weren't written may not be found from the new folder.</p>
@@ -209,7 +238,7 @@
   <li>A project must not be open in Revit, by you or anyone else, when you click <b>MAKE CHANGES</b>.</li>
   <li>Changes take effect the next time the project is opened. Until then, Revit uses the links as last saved.</li>
   <li>For a workshared project, add the central model, not a local copy: Revit works out relative paths from the central model's folder.</li>
-  <li>Revit links made from IFC files don't appear.</li>
+  <li>Revit Server models, and Revit links made from IFC files, are listed with a lock and can't be changed here. They're never written, even with <b>Write all links, not just changed ones</b> ticked. Change them in Revit's Manage Links.</li>
   <li>Each dialog starts where you last used it, even after Revit closes. <b>ADD FILES</b> and <b>ADD FOLDER</b> start where you last added projects. Repathing starts where the link points now, or where you last repathed to. The Excel export starts where you last saved one, or the first time, beside the project. The folders are kept in <code>%LOCALAPPDATA%\Mike Richardson Design\External Access Links Manager\Settings.txt</code>.</li>
 </ul>
 
@@ -226,7 +255,7 @@
 <h2 id="history">Version history</h2>
 <table>
   <tr><th>Version</th><th>Changes</th></tr>
-  <tr><td>9.1.0</td><td>One window, opened from a single <b>Links Manager</b> button, replaces the separate single-project and batch tools: add projects one at a time, from a folder or by dropping them on the window, and their links are read straight away. Each tab has one list showing the path on next open beside the last saved path, each link's path type is chosen from a list as in Revit's Manage Links, changed links are highlighted, and <b>CLOSE</b> asks before leaving changes unwritten. The Excel export lists every link on one sheet, like the window, and suggests a dated file name. Dialogs remember their folders between sessions, and every Revit year gets the same modern Windows folder picker. One install covers Revit 2024–2027, from a new setup that needs no admin rights. The files Excel export needs are now included for Revit 2025 and 2026. Fixes opening the text report and Excel file on Revit 2025 and later, message box titles, relative re-pathing to another drive or network share, and the batch summary, which now lists any project that couldn't be changed. Make Changes writes only the links you've changed, and leaves a project with none untouched; a new <b>Write all links, not just changed ones</b> option writes every link, so relative links keep working when a project is moved along with its linked files. Clearing <b>Is Loaded</b> on a link Revit couldn't find now unloads it, and a link's state updates as soon as its checkbox is clicked. A link's path type always matches its path: a Relative link given a full path (on another drive or share, or typed in) is written as Absolute, rather than as Relative with a full path. Relative CAD links, which Revit hands over with their full path, are shown and written relative to the project. <b>FIND &amp; REPLACE…</b> changes part of many paths at once, a <b>Found</b> column shows whether each link's file is there, and <b>MAKE CHANGES</b> lists what it will write and asks first.</td></tr>
+  <tr><td>9.1.0</td><td>One window, opened from a single <b>Links Manager</b> button, replaces the separate single-project and batch tools: add projects one at a time, from a folder or by dropping them on the window, and their links are read straight away. Each tab has one list showing the path on next open beside the last saved path, each link's path type is chosen from a list as in Revit's Manage Links, changed links are highlighted, and <b>CLOSE</b> asks before leaving changes unwritten. The Excel export lists every link on one sheet, like the window, and suggests a dated file name. Dialogs remember their folders between sessions, and every Revit year gets the same modern Windows folder picker. One install covers Revit 2024–2027, from a new setup that needs no admin rights. The files Excel export needs are now included for Revit 2025 and 2026. Fixes opening the text report and Excel file on Revit 2025 and later, message box titles, relative re-pathing to another drive or network share, and the batch summary, which now lists any project that couldn't be changed. Make Changes writes only the links you've changed, and leaves a project with none untouched; a new <b>Write all links, not just changed ones</b> option writes every link, so relative links keep working when a project is moved along with its linked files. Clearing <b>Is Loaded</b> on a link Revit couldn't find now unloads it, and a link's state updates as soon as its checkbox is clicked. A link's path type always matches its path: a Relative link given a full path (on another drive or share, or typed in) is written as Absolute, rather than as Relative with a full path. Relative CAD links, which Revit hands over with their full path, are shown and written relative to the project. <b>FIND &amp; REPLACE…</b> changes part of many paths at once, a <b>Found</b> column shows whether each link's file is there, and <b>MAKE CHANGES</b> lists what it will write and asks first. A <b>Saved In</b> column shows each Revit link's version and whether it's a central model or a local copy, and <b>IMPORT FROM EXCEL…</b> brings edits back from an exported workbook. Revit Server and IFC links are listed with a lock, and are never written. The window opens larger when the screen allows.</td></tr>
   <tr><td>9.0.0</td><td>Updated to work with Revit 2024</td></tr>
   <tr><td>8.0.0</td><td>Updated to work with Revit 2023</td></tr>
   <tr><td>7.0.0</td><td>Updated to work with Revit 2022</td></tr>

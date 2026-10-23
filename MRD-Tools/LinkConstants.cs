@@ -8,6 +8,7 @@ namespace MRDTools
         public const string PathTypeRelative = "Relative";
         public const string PathTypeAbsolute = "Absolute";
         public const string PathTypeServer = "Server";
+        public const string PathTypeCloud = "Cloud";
 
         public const string FilterRvt = "Rvt Files (*.rvt)|*.rvt";
         public const string FilterCad = "Dwg Files (*.dwg)|*.dwg";
@@ -21,7 +22,8 @@ namespace MRDTools
         public const string MsgNoChanges = "No links have been changed, so nothing has been written. Change a link's path or load state first, or tick 'Write all links, not just changed ones' to write every link as it is";
         public const string MsgNoLinksToWrite = "There are no Revit, CAD or DWF links to write";
 
-        public const string TipWriteAllLinks = "Writes every Revit, CAD and DWF link back to the project, not just the ones you've changed.\n\n"
+        public const string TipWriteAllLinks = "Writes every Revit, CAD and DWF link back to the project, not just the ones you've changed.\n"
+            + "Locked links (Revit Server, cloud and IFC) are left as they are.\n\n"
             + "Tick this if you'll move the project and its linked files to another folder afterwards.\n"
             + "Make Changes sets the project to transmitted, and when it next opens, relative links\n"
             + "that weren't written may not be found from the new folder.\n\n"

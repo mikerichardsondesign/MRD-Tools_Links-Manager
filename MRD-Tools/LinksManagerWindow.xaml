@@ -4,7 +4,7 @@
         xmlns:local="clr-namespace:MRDTools"
         xmlns:sys="clr-namespace:System;assembly=mscorlib"
         Title="External Access Links Manager"
-        Width="1280" Height="820" MinWidth="1080" MinHeight="620"
+        Width="1280" Height="820" MinWidth="1180" MinHeight="620"
         WindowStartupLocation="CenterOwner"
         FontFamily="Segoe UI" FontSize="12"
         UseLayoutRounding="True"
@@ -87,8 +87,27 @@
                         <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
                     </DataTrigger>
                     <!-- Other references aren't looked for, and say nothing -->
-                    <DataTrigger Binding="{Binding IsEditable}" Value="False">
+                    <DataTrigger Binding="{Binding Kind}" Value="{x:Static local:LinkKind.Other}">
                         <Setter Property="Text" Value="" />
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+
+            <!-- A Revit link's version: red when it's later than this Revit, so it won't load; amber for a local copy -->
+            <Style x:Key="SavedInText" TargetType="TextBlock">
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding FileInfo.IsLocal}" Value="True">
+                        <Setter Property="Foreground" Value="{StaticResource AccentTextBrush}" />
+                        <Setter Property="FontWeight" Value="SemiBold" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding FileInfo.IsLaterVersion}" Value="True">
+                        <Setter Property="Foreground" Value="{StaticResource ErrorBrush}" />
+                        <Setter Property="FontWeight" Value="SemiBold" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding FileInfo.Text}" Value="Unreadable">
+                        <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
                     </DataTrigger>
                 </Style.Triggers>
             </Style>
@@ -229,7 +248,7 @@
                         <TabItem x:Name="TabCad" Tag="{x:Static local:LinkKind.Cad}" />
                         <TabItem x:Name="TabDwf" Tag="{x:Static local:LinkKind.Dwf}" />
                         <TabItem x:Name="TabOther" Tag="{x:Static local:LinkKind.Other}"
-                                 ToolTip="Keynote tables, point clouds and other references: shown as last saved, and not changed" />
+                                 ToolTip="Keynote tables, assembly code tables, decals and other references: shown as last saved, and not changed" />
                     </TabControl>
 
                     <DockPanel x:Name="LinkTools" DockPanel.Dock="Top" Margin="10,8,10,8">
@@ -272,9 +291,21 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTextColumn x:Name="ProjectColumn" Header="PROJECT" Binding="{Binding ProjectName}" Width="170" IsReadOnly="True" />
-                            <DataGridTextColumn Header="LINK NAME" Binding="{Binding DesiredName}" Width="160" IsReadOnly="True" />
-                            <DataGridTemplateColumn Header="PATH TYPE" Width="100" SortMemberPath="DesiredPathType">
+                            <DataGridTextColumn x:Name="ProjectColumn" Header="PROJECT" Binding="{Binding ProjectName}" Width="150" IsReadOnly="True" />
+                            <DataGridTemplateColumn Header="LINK NAME" Width="150" SortMemberPath="DesiredName">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <!-- A lock for a link that can't be changed here, saying why -->
+                                        <DockPanel Background="Transparent" ToolTip="{Binding ReadOnlyReason}">
+                                            <TextBlock DockPanel.Dock="Left" Style="{StaticResource Icon}" Text="&#xE72E;" Margin="0,0,6,0"
+                                                       Foreground="{StaticResource TextMutedBrush}"
+                                                       Visibility="{Binding IsReadOnly, Converter={StaticResource BoolToVisibility}}" />
+                                            <TextBlock Text="{Binding DesiredName}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                        </DockPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="PATH TYPE" Width="92" SortMemberPath="DesiredPathType">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <Grid>
@@ -288,7 +319,7 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTemplateColumn Header="LOADED" Width="70" SortMemberPath="DesiredLoaded">
+                            <DataGridTemplateColumn Header="LOADED" Width="66" SortMemberPath="DesiredLoaded">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <CheckBox IsChecked="{Binding DesiredLoaded, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Center"
@@ -296,14 +327,14 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTemplateColumn Header="STATE" Width="86" SortMemberPath="DesiredState">
+                            <DataGridTemplateColumn Header="STATE" Width="80" SortMemberPath="DesiredState">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding DesiredState}" Style="{StaticResource StateText}" />
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTemplateColumn Header="FOUND" Width="64" SortMemberPath="FileStatus">
+                            <DataGridTemplateColumn Header="FOUND" Width="62" SortMemberPath="FileStatus">
                                 <DataGridTemplateColumn.HeaderStyle>
                                     <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource GridColumnHeader}">
                                         <Setter Property="ToolTip" Value="Whether the path on next open finds a file, looked for from this computer" />
@@ -312,6 +343,18 @@
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <TextBlock Style="{StaticResource FileStatusIcon}" ToolTip="{Binding FileStatusText}" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn x:Name="SavedInColumn" Header="SAVED IN" Width="104" SortMemberPath="FileInfo.Text">
+                                <DataGridTemplateColumn.HeaderStyle>
+                                    <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource GridColumnHeader}">
+                                        <Setter Property="ToolTip" Value="The Revit version each linked model was saved in, and whether it's a central model or a local copy" />
+                                    </Style>
+                                </DataGridTemplateColumn.HeaderStyle>
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding FileInfo.Text}" ToolTip="{Binding FileInfo.ToolTip}" Style="{StaticResource SavedInText}" />
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
@@ -362,6 +405,13 @@
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Style="{StaticResource Icon}" Text="&#xE80A;" Margin="0,0,6,0" />
                             <TextBlock Text="EXPORT TO EXCEL" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="ImportButton" DockPanel.Dock="Left" Style="{StaticResource ToolButton}" Click="ImportExcel_Click"
+                            ToolTip="Read paths, path types and load states back from an exported workbook you've edited in Excel. Nothing is written to the projects until you click Make Changes.">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Icon}" Text="&#xE8B5;" Margin="0,0,6,0" />
+                            <TextBlock Text="IMPORT FROM EXCEL…" />
                         </StackPanel>
                     </Button>
 

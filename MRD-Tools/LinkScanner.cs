@@ -10,7 +10,8 @@ namespace MRDTools
     {
         /// <summary>
         /// One row per external reference, or null when the project has no transmission data (no links).
-        /// Revit links made from IFC files (name.ifc.rvt) are left out, because Revit manages those through the IFC link.
+        /// Revit links made from IFC files (name.ifc.rvt), and Revit Server and cloud models, are listed but can't be changed
+        /// (see LinkRow.ReadOnlyReason).
         /// </summary>
         public static List<LinkRow> Scan(string projectPath)
         {
@@ -32,16 +33,14 @@ namespace MRDTools
                 // A Relative link can come back with its full path (CAD links do): show it, and write it, relative to the project
                 if (saved.PathType == PathType.Relative) savedPath = LinkRow.RelativeToProject(savedPath, projectPath);
                 if (desired.PathType == PathType.Relative) desiredPath = LinkRow.RelativeToProject(desiredPath, projectPath);
-                if (kind == LinkKind.Revit && (GetExtension.IfcRvtExtension(LinkRow.FileNameOf(savedPath))
-                    || GetExtension.IfcRvtExtension(LinkRow.FileNameOf(desiredPath))))
-                    continue;
 
-                string savedTime = kind == LinkKind.Other ? "N/A"
+                string savedPathType = PathTypeOf(saved);
+                string savedTime = kind == LinkKind.Other || LinkRow.IsRemote(savedPath, savedPathType) ? "N/A"
                     : GetLastSavedDate.LinksLastSavedDate(GetAbsolutePath.LinksAbsolutePath(savedPath, projectPath));
 
                 rows.Add(new LinkRow(projectPath, saved.GetReferencingId().ToString(), kind,
-                    savedPath, saved.PathType.ToString(), saved.GetLinkedFileStatus().ToString(), savedTime,
-                    desiredPath, desired.PathType.ToString(), desired.GetLinkedFileStatus().ToString()));
+                    savedPath, savedPathType, saved.GetLinkedFileStatus().ToString(), savedTime,
+                    desiredPath, PathTypeOf(desired), desired.GetLinkedFileStatus().ToString()));
             }
             return rows;
         }
@@ -56,5 +55,9 @@ namespace MRDTools
 
         private static string UserVisiblePath(ExternalFileReference reference) =>
             ModelPathUtils.ConvertModelPathToUserVisiblePath(reference.GetPath());
+
+        /// <summary>Relative, Absolute or Server, as Revit has it, or Cloud for a model on BIM 360 or Autodesk Docs.</summary>
+        private static string PathTypeOf(ExternalFileReference reference) =>
+            reference.GetPath().CloudPath ? LinkConstants.PathTypeCloud : reference.PathType.ToString();
     }
 }
