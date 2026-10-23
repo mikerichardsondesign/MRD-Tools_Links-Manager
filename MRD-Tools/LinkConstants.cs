@@ -6,6 +6,7 @@ namespace MRDTools
         public const string StateUnloaded = "Unloaded";
         public const string StateNotFound = "NotFound";
         public const string PathTypeRelative = "Relative";
+        public const string PathTypeAbsolute = "Absolute";
 
         public const string FilterRvt = "Rvt Files (*.rvt)|*.rvt";
         public const string FilterCad = "Dwg Files (*.dwg)|*.dwg";

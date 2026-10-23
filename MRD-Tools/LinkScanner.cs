@@ -28,6 +28,10 @@ namespace MRDTools
 
                 string savedPath = UserVisiblePath(saved);
                 string desiredPath = UserVisiblePath(desired);
+
+                // A Relative link can come back with its full path (CAD links do): show it, and write it, relative to the project
+                if (saved.PathType == PathType.Relative) savedPath = LinkRow.RelativeToProject(savedPath, projectPath);
+                if (desired.PathType == PathType.Relative) desiredPath = LinkRow.RelativeToProject(desiredPath, projectPath);
                 if (kind == LinkKind.Revit && (GetExtension.IfcRvtExtension(LinkRow.FileNameOf(savedPath))
                     || GetExtension.IfcRvtExtension(LinkRow.FileNameOf(desiredPath))))
                     continue;

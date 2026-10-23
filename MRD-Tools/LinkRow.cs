@@ -49,7 +49,7 @@ namespace MRDTools
             LastSavedState = lastSavedState;
             LastSavedTime = lastSavedTime;
 
-            DesiredPathType = desiredPathType;
+            OriginalPathType = desiredPathType;
             OriginalPath = _desiredPath = desiredPath;
             OriginalName = _desiredName = FileNameOf(desiredPath);
             OriginalState = _desiredState = desiredState;
@@ -101,7 +101,7 @@ namespace MRDTools
 
         #region Desired, as read from the project
 
-        public string DesiredPathType { get; }
+        public string OriginalPathType { get; private set; }
         public string OriginalPath { get; private set; }
         public string OriginalName { get; private set; }
         public string OriginalState { get; private set; }
@@ -123,11 +123,29 @@ namespace MRDTools
                 _desiredName = FileNameOf(path);
                 NotifyPropertyChanged(nameof(DesiredPath));
                 NotifyPropertyChanged(nameof(DesiredName));
+                NotifyPropertyChanged(nameof(DesiredPathType));
                 NotifyPropertyChanged(nameof(IsDirty));
             }
         }
 
         public string DesiredName => _desiredName;
+
+        /// <summary>
+        /// The path type to write with DesiredPath. Revit takes the path type as describing the path it's given, so once the
+        /// path has changed, a full path (Repath with Absolute Paths, another drive or share, or typed in) makes the link
+        /// Absolute and a relative path makes it Relative. An unchanged path keeps the type it was read with, as do Server links.
+        /// </summary>
+        public string DesiredPathType
+        {
+            get
+            {
+                bool relativeOrAbsolute = OriginalPathType == LinkConstants.PathTypeRelative || OriginalPathType == LinkConstants.PathTypeAbsolute;
+                if (!IsPathChanged || !relativeOrAbsolute) return OriginalPathType;
+                return IsFullPath(_desiredPath) ? LinkConstants.PathTypeAbsolute : LinkConstants.PathTypeRelative;
+            }
+        }
+
+        public bool IsPathChanged => !string.Equals(_desiredPath, OriginalPath, StringComparison.OrdinalIgnoreCase);
 
         /// <summary>Whether Revit will load the link. The Link State text follows it.</summary>
         public bool DesiredLoaded
@@ -149,8 +167,7 @@ namespace MRDTools
         public string DesiredState => _desiredState;
 
         /// <summary>True when the path or load state differs from what the project holds, so it needs writing.</summary>
-        public bool IsDirty =>
-            _desiredLoaded != OriginalLoaded || !string.Equals(_desiredPath, OriginalPath, StringComparison.OrdinalIgnoreCase);
+        public bool IsDirty => _desiredLoaded != OriginalLoaded || IsPathChanged;
 
         #endregion
 
@@ -158,12 +175,13 @@ namespace MRDTools
 
         /// <summary>
         /// Points the link at another file. A Relative link gets a path relative to its project, unless
-        /// forceAbsolute is set or the file is on another drive or share, where no relative path exists.
+        /// forceAbsolute is set or the file is on another drive or share, where no relative path exists;
+        /// a full path then makes it Absolute (see DesiredPathType).
         /// </summary>
         public void Repath(string targetPath, bool forceAbsolute)
         {
             string path = targetPath;
-            if (!forceAbsolute && DesiredPathType == LinkConstants.PathTypeRelative)
+            if (!forceAbsolute && OriginalPathType == LinkConstants.PathTypeRelative)
             {
                 try { path = GetRelativePath.GetRelativePathUriA(targetPath, ProjectPath); }
                 catch (Exception) { path = targetPath; }
@@ -182,6 +200,8 @@ namespace MRDTools
         /// <summary>After the desired state has been written, it becomes what the project holds.</summary>
         internal void AcceptChanges()
         {
+            // The type first: it's worked out from how the path differs from the original
+            OriginalPathType = DesiredPathType;
             OriginalPath = _desiredPath;
             OriginalName = _desiredName;
             OriginalLoaded = _desiredLoaded;
@@ -196,6 +216,33 @@ namespace MRDTools
         /// <summary>Revit loads a link that is Loaded, and tries again on opening one it couldn't find.</summary>
         internal static bool IsLoadedState(string state) =>
             state == LinkConstants.StateLoaded || state == LinkConstants.StateNotFound;
+
+        /// <summary>A path with a drive (C:\...) or a share (\\server\...), as opposed to one relative to the project.</summary>
+        internal static bool IsFullPath(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return false;
+            if (path.StartsWith(@"\\") || path.StartsWith("//")) return true;
+            return path.Length >= 3 && char.IsLetter(path[0]) && path[1] == ':' && (path[2] == '\\' || path[2] == '/');
+        }
+
+        /// <summary>
+        /// A Relative link's full path made relative to the project's folder. Revit hands back CAD links made in its UI as
+        /// Relative with their full path, although Manage Links shows them relative. Anything else, including a file on
+        /// another drive or share where no relative path exists, comes back as it was.
+        /// </summary>
+        internal static string RelativeToProject(string path, string projectPath)
+        {
+            if (!IsFullPath(path)) return path;
+            try
+            {
+                string relative = GetRelativePath.GetRelativePathUriA(path, projectPath);
+                return IsFullPath(relative) ? path : relative;
+            }
+            catch (Exception)
+            {
+                return path;
+            }
+        }
 
         /// <summary>The file name at the end of a path, without the exceptions Path.GetFileName can throw.</summary>
         internal static string FileNameOf(string path)

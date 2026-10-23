@@ -41,7 +41,10 @@ namespace MRDTools
                 if (string.IsNullOrWhiteSpace(row.DesiredPath))
                     throw new InvalidOperationException($"Link {row.RefId} has no path");
 
-                transData.SetDesiredReferenceData(refId, new FilePath(row.DesiredPath), saved.PathType, row.DesiredLoaded);
+                // Revit takes the path type as describing the path it's given, so it comes from the row rather than from the
+                // last save: a Relative link given a full path is written as Absolute (see LinkRow.DesiredPathType)
+                PathType pathType = Enum.TryParse(row.DesiredPathType, out PathType rowPathType) ? rowPathType : saved.PathType;
+                transData.SetDesiredReferenceData(refId, new FilePath(row.DesiredPath), pathType, row.DesiredLoaded);
                 written.Add(row);
             }
             if (written.Count == 0) return 0;
