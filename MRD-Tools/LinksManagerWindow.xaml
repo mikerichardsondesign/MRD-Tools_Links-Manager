@@ -4,7 +4,7 @@
         xmlns:local="clr-namespace:MRDTools"
         xmlns:sys="clr-namespace:System;assembly=mscorlib"
         Title="External Access Links Manager"
-        Width="1280" Height="820" MinWidth="1000" MinHeight="620"
+        Width="1280" Height="820" MinWidth="1080" MinHeight="620"
         WindowStartupLocation="CenterOwner"
         FontFamily="Segoe UI" FontSize="12"
         UseLayoutRounding="True"
@@ -39,11 +39,15 @@
                 </Style.Triggers>
             </Style>
 
-            <!-- Changed links get an Amber row; selection still wins -->
+            <!-- Changed links get an Amber row, and links whose file isn't found a red one, which wins: a changed link
+                 keeps its Amber bar. Selection still wins over both. -->
             <Style x:Key="LinkRowStyle" TargetType="DataGridRow" BasedOn="{StaticResource GridRow}">
                 <Style.Triggers>
                     <DataTrigger Binding="{Binding IsDirty}" Value="True">
                         <Setter Property="Background" Value="{StaticResource AccentSoftBrush}" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding FileStatus}" Value="{x:Static local:LinkFileStatus.Missing}">
+                        <Setter Property="Background" Value="{StaticResource ErrorSoftBrush}" />
                     </DataTrigger>
                     <Trigger Property="IsSelected" Value="True">
                         <Setter Property="Background" Value="{StaticResource SelectionBrush}" />
@@ -57,6 +61,34 @@
                     <DataTrigger Binding="{Binding DesiredState}" Value="NotFound">
                         <Setter Property="Foreground" Value="{StaticResource ErrorBrush}" />
                         <Setter Property="FontWeight" Value="SemiBold" />
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+
+            <!-- A tick when the path on next open finds a file, a red warning when it doesn't, and a dash for a server or cloud model -->
+            <Style x:Key="FileStatusIcon" TargetType="TextBlock" BasedOn="{StaticResource Icon}">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="Padding" Value="8,4" />
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding FileStatus}" Value="{x:Static local:LinkFileStatus.Found}">
+                        <Setter Property="Text" Value="&#xE73E;" />
+                        <Setter Property="Foreground" Value="{StaticResource PrimaryBrush}" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding FileStatus}" Value="{x:Static local:LinkFileStatus.Missing}">
+                        <Setter Property="Text" Value="&#xE7BA;" />
+                        <Setter Property="Foreground" Value="{StaticResource ErrorBrush}" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding FileStatus}" Value="{x:Static local:LinkFileStatus.Checking}">
+                        <Setter Property="Text" Value="&#xE72C;" />
+                        <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding FileStatus}" Value="{x:Static local:LinkFileStatus.NotChecked}">
+                        <Setter Property="Text" Value="&#xE738;" />
+                        <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+                    </DataTrigger>
+                    <!-- Other references aren't looked for, and say nothing -->
+                    <DataTrigger Binding="{Binding IsEditable}" Value="False">
+                        <Setter Property="Text" Value="" />
                     </DataTrigger>
                 </Style.Triggers>
             </Style>
@@ -206,6 +238,8 @@
                                     ToolTip="Point the selected links at the files of the same name in another folder" />
                             <Button Style="{StaticResource ToolButton}" Content="REPATH ALL TO FOLDER…" Click="RepathAll_Click"
                                     ToolTip="Point every link on this tab at the files of the same name in another folder" />
+                            <Button Style="{StaticResource ToolButton}" Content="FIND &amp; REPLACE…" Click="FindReplace_Click"
+                                    ToolTip="Replace text in the paths of the selected links, this tab's links or every link (Ctrl+H)" />
                             <Button Style="{StaticResource ToolButton}" Click="Reset_Click"
                                     ToolTip="Undo your changes to the selected links, or to every link on this tab if none are selected">
                                 <StackPanel Orientation="Horizontal">
@@ -266,6 +300,18 @@
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding DesiredState}" Style="{StaticResource StateText}" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="FOUND" Width="64" SortMemberPath="FileStatus">
+                                <DataGridTemplateColumn.HeaderStyle>
+                                    <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource GridColumnHeader}">
+                                        <Setter Property="ToolTip" Value="Whether the path on next open finds a file, looked for from this computer" />
+                                    </Style>
+                                </DataGridTemplateColumn.HeaderStyle>
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Style="{StaticResource FileStatusIcon}" ToolTip="{Binding FileStatusText}" />
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>

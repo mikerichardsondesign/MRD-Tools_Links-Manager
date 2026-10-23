@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel;
+using System.Text;
 
 namespace MRDTools
 {
@@ -15,6 +16,18 @@ namespace MRDTools
     }
 
     /// <summary>
+    /// Whether the file a link's path on next open points at was found from this computer, in the order the Found column
+    /// sorts them: missing files first.
+    /// </summary>
+    public enum LinkFileStatus
+    {
+        Missing,
+        Found,
+        Checking,
+        NotChecked
+    }
+
+    /// <summary>
     /// One external reference of one project: how it was last saved, the desired state read from the project
     /// (what Revit will apply the next time it opens), and that desired state as edited here.
     /// Revit, CAD and DWF links can be edited; Other links are only shown as last saved.
@@ -27,6 +40,8 @@ namespace MRDTools
         string _desiredName;
         bool _desiredLoaded;
         string _desiredState;
+        LinkFileStatus _fileStatus = LinkFileStatus.NotChecked;
+        string _checkedFile;
 
         #endregion
 
@@ -185,6 +200,68 @@ namespace MRDTools
         /// <summary>True when the path or load state differs from what the project holds, so it needs writing.</summary>
         public bool IsDirty => _desiredLoaded != OriginalLoaded || IsPathChanged;
 
+        /// <summary>Whether Make Changes writes the link: a changed Revit, CAD or DWF link, or every one of them when writing all.</summary>
+        public bool ShouldWrite(bool writeAll) => IsEditable && (writeAll || IsDirty);
+
+        #endregion
+
+        #region Whether the file is there
+
+        /// <summary>Whether the file at DesiredPath was found when it was last looked for (see FileChecker).</summary>
+        public LinkFileStatus FileStatus => _fileStatus;
+
+        /// <summary>The Found column's tooltip: the full path looked for, and whether it was there.</summary>
+        public string FileStatusText
+        {
+            get
+            {
+                switch (_fileStatus)
+                {
+                    case LinkFileStatus.Found: return "Found: " + _checkedFile;
+                    case LinkFileStatus.Missing: return "Not found from this computer: " + _checkedFile;
+                    case LinkFileStatus.Checking: return "Looking for " + _checkedFile;
+                    default: return IsEditable && !string.IsNullOrWhiteSpace(_desiredPath) ? "Revit Server and cloud models aren't looked for" : null;
+                }
+            }
+        }
+
+        /// <summary>
+        /// The full path of the file DesiredPath points at, with a relative path worked out from the project's folder, or null
+        /// when there's no file to look for: an Other reference, or a Revit Server or cloud model.
+        /// </summary>
+        internal string FileToCheck()
+        {
+            if (!IsEditable || string.IsNullOrWhiteSpace(_desiredPath) || _desiredPath.Contains("://")
+                || OriginalPathType == LinkConstants.PathTypeServer)
+                return null;
+            string full = AbsoluteFromProject(_desiredPath, ProjectPath);
+            return IsFullPath(full) ? full : null;
+        }
+
+        /// <summary>Marks the link as being looked for, or as not looked for when it has no file, and returns the file to look for.</summary>
+        internal string BeginFileCheck()
+        {
+            string file = FileToCheck();
+            SetFileStatus(file == null ? LinkFileStatus.NotChecked : LinkFileStatus.Checking, file);
+            return file;
+        }
+
+        /// <summary>Records whether the file was found, unless the link has been pointed at another file since it was looked for.</summary>
+        internal void EndFileCheck(string file, bool found)
+        {
+            if (_fileStatus != LinkFileStatus.Checking || !string.Equals(file, _checkedFile, StringComparison.OrdinalIgnoreCase)) return;
+            SetFileStatus(found ? LinkFileStatus.Found : LinkFileStatus.Missing, file);
+        }
+
+        void SetFileStatus(LinkFileStatus status, string file)
+        {
+            if (status == _fileStatus && file == _checkedFile) return;
+            _fileStatus = status;
+            _checkedFile = file;
+            NotifyPropertyChanged(nameof(FileStatus));
+            NotifyPropertyChanged(nameof(FileStatusText));
+        }
+
         #endregion
 
         #region Editing
@@ -200,6 +277,23 @@ namespace MRDTools
 
         /// <summary>Points the link at the file of the same name in another folder.</summary>
         public void RepathToFolder(string folder) => Repath(System.IO.Path.Combine(folder, DesiredName));
+
+        /// <summary>Whether DesiredPath contains the text, ignoring case unless matchCase is set.</summary>
+        public bool PathContains(string find, bool matchCase) =>
+            !string.IsNullOrEmpty(find) && (_desiredPath ?? "").IndexOf(find, Comparison(matchCase)) >= 0;
+
+        /// <summary>
+        /// Replaces every occurrence of find in DesiredPath, and returns whether the path changed. The path type follows the
+        /// new path, as it does when a path is typed. A replacement that would leave no path is ignored.
+        /// </summary>
+        public bool ReplaceInPath(string find, string replacement, bool matchCase)
+        {
+            if (!PathContains(find, matchCase)) return false;
+            string path = ReplaceText(_desiredPath, find, replacement ?? "", matchCase);
+            if (string.IsNullOrWhiteSpace(path) || path == _desiredPath) return false;
+            DesiredPath = path;
+            return true;
+        }
 
         public void ResetPath() => DesiredPath = OriginalPath;
 
@@ -266,6 +360,22 @@ namespace MRDTools
                 return path;
             }
         }
+
+        /// <summary>Replaces every occurrence of find, matching case or not: string.Replace can't ignore case on .NET Framework (Revit 2024).</summary>
+        internal static string ReplaceText(string text, string find, string replacement, bool matchCase)
+        {
+            var sb = new StringBuilder();
+            int start = 0;
+            int at;
+            while ((at = text.IndexOf(find, start, Comparison(matchCase))) >= 0)
+            {
+                sb.Append(text, start, at - start).Append(replacement);
+                start = at + find.Length;
+            }
+            return sb.Append(text, start, text.Length - start).ToString();
+        }
+
+        static StringComparison Comparison(bool matchCase) => matchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
 
         /// <summary>The file name at the end of a path, without the exceptions Path.GetFileName can throw.</summary>
         internal static string FileNameOf(string path)

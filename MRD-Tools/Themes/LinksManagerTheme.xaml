@@ -30,6 +30,7 @@
     <SolidColorBrush x:Key="TextSecondaryBrush" Color="#FF546E7A" />
     <SolidColorBrush x:Key="TextMutedBrush" Color="#FF767676" />
     <SolidColorBrush x:Key="ErrorBrush" Color="#FFC62828" />
+    <SolidColorBrush x:Key="ErrorSoftBrush" Color="#FFFFEBEE" />    <!-- Red 50 -->
 
     <SolidColorBrush x:Key="WindowBrush" Color="#FFF1F3F4" />
     <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFFFF" />
@@ -293,6 +294,42 @@
                         </Trigger>
                         <Trigger Property="Content" Value="{x:Null}">
                             <Setter TargetName="Label" Property="Margin" Value="0" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.45" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Radio buttons, to match the check boxes -->
+    <Style TargetType="RadioButton">
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    <StackPanel Orientation="Horizontal" Background="Transparent">
+                        <Grid Width="16" Height="16" VerticalAlignment="Center">
+                            <Ellipse x:Name="Ring" Stroke="{StaticResource PrimaryBrush}" StrokeThickness="2" Fill="{StaticResource SurfaceBrush}" />
+                            <Ellipse x:Name="Dot" Width="8" Height="8" Fill="{StaticResource PrimaryDarkBrush}" Visibility="Collapsed" />
+                        </Grid>
+                        <ContentPresenter Margin="8,0,0,0" VerticalAlignment="Center" RecognizesAccessKey="True" />
+                    </StackPanel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Ring" Property="Stroke" Value="{StaticResource PrimaryDarkBrush}" />
+                            <Setter TargetName="Dot" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Ring" Property="Stroke" Value="{StaticResource PrimaryDarkerBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Ring" Property="Stroke" Value="{StaticResource AccentDarkBrush}" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Opacity" Value="0.45" />

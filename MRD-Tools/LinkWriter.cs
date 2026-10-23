@@ -22,7 +22,7 @@ namespace MRDTools
             Dictionary<string, LinkRow> changed = new Dictionary<string, LinkRow>();
             foreach (LinkRow row in rows)
             {
-                if (row.IsEditable && (writeAll || row.IsDirty) && string.Equals(row.ProjectPath, projectPath, StringComparison.OrdinalIgnoreCase))
+                if (row.ShouldWrite(writeAll) && string.Equals(row.ProjectPath, projectPath, StringComparison.OrdinalIgnoreCase))
                     changed[Key(row.Kind, row.RefId)] = row;
             }
             if (changed.Count == 0) return 0;

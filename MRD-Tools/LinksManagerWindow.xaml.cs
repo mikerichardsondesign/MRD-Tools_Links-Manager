@@ -28,6 +28,9 @@ namespace MRDTools
         // Where each kind of dialog last looked, kept between sessions
         readonly FolderMemory folders = FolderMemory.Load();
 
+        // Looks for each link's file in the background, for the Found column
+        readonly FileChecker fileChecker;
+
         // Set while many links are edited at once, so the counts are worked out once at the end
         bool bulkEdit;
 
@@ -44,6 +47,7 @@ namespace MRDTools
             Icon = WindowIcon.Load();
             VersionText.Text = typeof(LinksManagerWindow).Assembly.GetName().Version.ToString(3);
             WriteAllLinks.ToolTip = LinkConstants.TipWriteAllLinks;
+            fileChecker = new FileChecker(Dispatcher);
 
             ProjectsGrid.ItemsSource = projects;
             linksView = new ListCollectionView(links) { Filter = IsShown };
@@ -109,7 +113,7 @@ namespace MRDTools
 
             ProjectCount.Text = projects.Count == 0 ? "" : projects.Count == 1 ? "1 project" : $"{projects.Count} projects";
             ProjectsHint.Visibility = projects.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-            LinksSummary.Text = processed.Count == 0 ? "" : $"{processed.Count} link(s) in {projectsWithLinks} project(s)";
+            RefreshLinksSummary(processed, projectsWithLinks);
 
             int changed = processed.Count(l => l.IsDirty);
             ChangesBadgeText.Text = changed == 1 ? "1 LINK CHANGED" : $"{changed} LINKS CHANGED";
@@ -120,9 +124,30 @@ namespace MRDTools
             LinkTools.IsEnabled = SelectedKind != LinkKind.Other && linksView.Count > 0;
         }
 
+        /// <summary>How many links are listed, and how many of their files weren't found.</summary>
+        void RefreshLinksSummary(List<LinkRow> processed, int projectsWithLinks)
+        {
+            int missing = processed.Count(l => l.FileStatus == LinkFileStatus.Missing);
+            LinksSummary.Text = processed.Count == 0 ? ""
+                : $"{processed.Count} link(s) in {projectsWithLinks} project(s)" + (missing > 0 ? $" · {missing} not found" : "");
+        }
+
         void Link_PropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            if (!bulkEdit && e.PropertyName == nameof(LinkRow.IsDirty)) RefreshCounts();
+            // A new path is looked for at once, even in a bulk edit; the counts wait for the edit to finish
+            if (e.PropertyName == nameof(LinkRow.DesiredPath))
+            {
+                fileChecker.Check((LinkRow)sender);
+            }
+            else if (!bulkEdit && e.PropertyName == nameof(LinkRow.FileStatus))
+            {
+                List<LinkRow> processed = ProcessedLinks();
+                RefreshLinksSummary(processed, processed.Select(l => l.ProjectPath).Distinct(StringComparer.OrdinalIgnoreCase).Count());
+            }
+            else if (!bulkEdit && e.PropertyName == nameof(LinkRow.IsDirty))
+            {
+                RefreshCounts();
+            }
         }
 
         void Project_PropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -155,6 +180,7 @@ namespace MRDTools
             {
                 row.PropertyChanged += Link_PropertyChanged;
                 links.Add(row);
+                fileChecker.Check(row);
             }
         }
 
@@ -338,6 +364,27 @@ namespace MRDTools
             if (folder != null) EditRows(rows, r => r.RepathToFolder(folder));
         }
 
+        void FindReplace_Click(object sender, RoutedEventArgs e)
+        {
+            LinksGrid.CommitEdit(DataGridEditingUnit.Row, true);
+            List<LinkRow> every = ProcessedLinks().Where(r => r.IsEditable).ToList();
+            if (every.Count == 0) return;
+
+            var dialog = new FindReplaceWindow(SelectedRows(), RowsOnTab(), every, KindName(SelectedKind)) { Owner = this };
+            if (dialog.ShowDialog() != true) return;
+            ReplaceInPaths(dialog.ChosenRows, dialog.FindText, dialog.ReplacementText, dialog.IsMatchCase);
+        }
+
+        /// <summary>Replaces text in the links' paths on next open, and returns how many paths changed.</summary>
+        internal int ReplaceInPaths(IEnumerable<LinkRow> rows, string find, string replacement, bool matchCase)
+        {
+            int changed = 0;
+            EditRows(rows, r => { if (r.ReplaceInPath(find, replacement, matchCase)) changed++; });
+            return changed;
+        }
+
+        static string KindName(LinkKind kind) => kind == LinkKind.Cad ? "CAD" : kind == LinkKind.Dwf ? "DWF" : kind.ToString();
+
         void Reset_Click(object sender, RoutedEventArgs e)
         {
             List<LinkRow> rows = SelectedRows();
@@ -492,6 +539,57 @@ namespace MRDTools
 
         #region Make Changes
 
+        // A long list of projects is cut short, so the question stays on screen
+        const int PreviewProjects = 12;
+
+        /// <summary>
+        /// What Make Changes is about to write, for the user to confirm: how many links go to each project ticked to Process,
+        /// which projects are left alone, and how many of the links point at files that weren't found.
+        /// </summary>
+        internal string WritePreview(bool writeAll, out bool anyMissing)
+        {
+            var lines = new List<string>();
+            int total = 0;
+            int written = 0;
+            int untouched = 0;
+            int missing = 0;
+            int checking = 0;
+            foreach (ProjectRow project in projects.Where(p => p.Process))
+            {
+                List<LinkRow> rows = links.Where(l => l.ShouldWrite(writeAll)
+                    && string.Equals(l.ProjectPath, project.Path, StringComparison.OrdinalIgnoreCase)).ToList();
+                if (rows.Count == 0)
+                {
+                    untouched++;
+                    continue;
+                }
+                written++;
+                total += rows.Count;
+                missing += rows.Count(r => r.FileStatus == LinkFileStatus.Missing);
+                checking += rows.Count(r => r.FileStatus == LinkFileStatus.Checking);
+                if (lines.Count < PreviewProjects)
+                    lines.Add(writeAll ? $"{project.Name}: {Plural(rows.Count, "link")}, {rows.Count(r => r.IsDirty)} changed"
+                        : $"{project.Name}: {Plural(rows.Count, "changed link")}");
+            }
+            if (written > PreviewProjects) lines.Add($"…and {Plural(written - PreviewProjects, "more project")}");
+
+            string text = $"Write {Plural(total, "link")} to {Plural(written, "project")}?\n\n" + string.Join("\n", lines);
+            if (untouched > 0)
+                text += $"\n\n{Plural(untouched, "project")} with " + (writeAll ? "no Revit, CAD or DWF links" : "no changes")
+                    + (untouched == 1 ? " is" : " are") + " left as " + (untouched == 1 ? "it is." : "they are.");
+            if (missing > 0)
+                text += "\n\n" + (missing == 1 ? "1 of these links points at a file that wasn't found"
+                    : $"{missing} of these links point at files that weren't found") + " from this computer (see the Found column).";
+            if (checking > 0)
+                text += "\n\n" + (checking == 1 ? "1 of these links is" : $"{checking} of these links are") + " still being looked for.";
+            text += "\n\nRevit applies the links the next time each project is opened.";
+
+            anyMissing = missing > 0;
+            return text;
+        }
+
+        static string Plural(int count, string noun) => count == 1 ? "1 " + noun : $"{count} {noun}s";
+
         void MakeChanges_Click(object sender, RoutedEventArgs e)
         {
             LinksGrid.CommitEdit(DataGridEditingUnit.Row, true);
@@ -504,11 +602,18 @@ namespace MRDTools
                 return;
             }
             // Only changed links are written, unless Write All Links is ticked, so a project with none isn't touched
-            if (!ProcessedLinks().Any(r => r.IsEditable && (writeAll || r.IsDirty)))
+            if (!ProcessedLinks().Any(r => r.ShouldWrite(writeAll)))
             {
                 Show(writeAll ? LinkConstants.MsgNoLinksToWrite : LinkConstants.MsgNoChanges, "No Changes");
                 return;
             }
+
+            // Say what's about to be written first, warning of any links whose files weren't found
+            string preview = WritePreview(writeAll, out bool anyMissing);
+            if (MessageBox.Show(this, preview, "Make Changes", MessageBoxButton.YesNo,
+                    anyMissing ? MessageBoxImage.Warning : MessageBoxImage.Question,
+                    anyMissing ? MessageBoxResult.No : MessageBoxResult.Yes) != MessageBoxResult.Yes)
+                return;
 
             int amendedCount = 0;
             int unchangedCount = 0;
@@ -585,9 +690,16 @@ namespace MRDTools
 
         void Window_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Key != Key.F1) return;
-            OpenHelp();
-            e.Handled = true;
+            if (e.Key == Key.F1)
+            {
+                OpenHelp();
+                e.Handled = true;
+            }
+            else if (e.Key == Key.H && Keyboard.Modifiers == ModifierKeys.Control && LinkTools.IsEnabled)
+            {
+                FindReplace_Click(sender, e);
+                e.Handled = true;
+            }
         }
 
         void OpenHelp()
