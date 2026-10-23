@@ -32,6 +32,19 @@ dotnet build MRDTools.csproj -c "Release R27"
 
 The Revit API comes from the `Nice3point.Revit.Api` NuGet packages, so a year builds without that Revit installed. Each year restores into its own `obj\R20xx\` folder.
 
+## Checks
+
+`tests\MRD-Tools.Checks` checks everything that doesn't need Revit: the link model, the text report, the Excel export and import, looking for linked files, the remembered folders, and the windows themselves, which it opens off screen and drives through their actions. From the repo root:
+
+```
+dotnet run --project tests\MRD-Tools.Checks
+```
+
+It builds the add-in's default (Revit 2027) version, which compiles the same code as the other years, runs every check, prints any that fail and ends with a count. It shows the Windows folder picker for a moment and presses its buttons, so run it at a desktop. Its test files and screenshots of the windows go in `%TEMP%\MRD-Tools.Checks`, or the folder after `--out`.
+
+- **Help page screenshots:** `--update-help` also copies the help page's screenshots into `bundle\Contents\Resources`. They're rendered from the real windows with made-up projects.
+- **What needs Revit:** reading and writing a project's links (TransmissionData) and the Saved In details (BasicFileInfo) only run inside Revit, so test those in Revit itself.
+
 ## Stage and package
 
 From the `MRD-Tools` folder:

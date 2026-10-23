@@ -61,6 +61,11 @@
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="7.0.0" />
   </ItemGroup>
 
+  <!-- The checks in tests\MRD-Tools.Checks drive the link model and windows directly -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="MRD-Tools.Checks" />
+  </ItemGroup>
+
   <ItemGroup>
     <EmbeddedResource Include="Resources\MRD-Links.ico" LogicalName="MRDTools.MRD-Links.ico" />
     <None Update="MRD-Tools.addin" CopyToOutputDirectory="PreserveNewest" />

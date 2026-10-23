@@ -92,8 +92,14 @@ namespace MRDTools
 
         internal List<LinkRow> SelectedRows() => LinksGrid.SelectedItems.OfType<LinkRow>().Where(r => r.IsEditable).ToList();
 
+        /// <summary>Every link of every project in the list, in the order they were read.</summary>
+        internal IReadOnlyList<LinkRow> Links => links;
+
+        /// <summary>How many links' files are still being looked for.</summary>
+        internal int PendingFileChecks => fileChecker.Pending;
+
         /// <summary>Re-filters the links grid, then brings every count, header and button up to date.</summary>
-        void RefreshAll()
+        internal void RefreshAll()
         {
             if (linksView == null) return;
             // Refresh isn't allowed while a cell is being edited

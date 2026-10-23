@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Checks the parts of the add-in that don't need Revit, and drives its windows off screen.
+    How to run it is in the Checks section of README.md.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>MRD-Tools.Checks</AssemblyName>
+    <RootNamespace>MRDTools.Checks</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      The add-in's default build, for Revit 2027, which shares this framework. Every Revit year compiles the same code,
+      and only Revit-free parts of it are run, so Revit itself isn't needed.
+    -->
+    <ProjectReference Include="..\..\MRD-Tools\MRDTools.csproj" />
+  </ItemGroup>
+
+</Project>
